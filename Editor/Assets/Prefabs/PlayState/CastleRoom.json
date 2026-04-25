@@ -1,0 +1,34 @@
+{
+  "Name": "CastleRoom",
+  "ModelComponent": "Assets\\Models\\Room_001.model",
+  "Transform3DComponent": {
+    "Pos": {
+      "x": 0.5,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "Scale": {
+      "x": 0.3,
+      "y": 0.3,
+      "z": 0.3
+    },
+    "Rot": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
+  },
+  "BoxCollider3DComponent": {
+    "Pos": {
+      "x": -8.2,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "Size": {
+      "x": 0.3,
+      "y": 5.0,
+      "z": 20.0
+    },
+    "IsStatic": true
+  }
+}

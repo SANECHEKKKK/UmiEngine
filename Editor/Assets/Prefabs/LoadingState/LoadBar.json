@@ -1,0 +1,15 @@
+{
+  "Name": "LoadBar",
+  "TextureComponent": {
+    "Path": "Assets\\Textures\\LoadingState\\LoadingStateBar.png"
+  },
+    "UiComponent": {
+      "Anchor": "MiddleCenter",
+      "Width": 0.9,
+      "Height": 0.05,
+      "OffsetX": 0.0,
+      "OffsetY": 0.2
+    },
+    "BarComponent": {},
+    "LayerComponent": 0
+  }

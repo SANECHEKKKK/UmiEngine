@@ -1,0 +1,52 @@
+{
+  "Name": "Enemy",
+  "ModelComponent": "Assets\\Models\\AL_Standard.model",
+  "Transform3DComponent": {
+    "Pos": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "Scale": {
+      "x": 0.01,
+      "y": 0.01,
+      "z": 0.01
+    },
+    "Rot": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
+  },
+  "Animator3DComponent": {
+    "States": {
+      "Idle": "Rig|Idle_Loop",
+      "Running": "Rig|Sprint_Loop",
+      "Attacking": "Rig|Punch_Jab",
+      "Walking": "Rig|Walk_Loop"
+    }
+  },
+  "StateComponent": "Idle",
+  "InputComponent": {},
+  "MovementComponent": {
+    "MovementSpeed": 10.0,
+    "Friction": 10.0
+  },
+  "AiFollowBehaviorComponent": {},
+  "BoxCollider3DComponent": {
+    "Pos": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "Size": {
+      "x": 1.0,
+      "y": 2.0,
+      "z": 1.0
+    },
+    "IsPhysics": true,
+    "IsStatic": false,
+    "IsTrigger": false
+  },
+  "EnemyTag": {}
+}

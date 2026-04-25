@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="../Editor/Editor.vcxproj" Id="37a47222-3ae6-4984-aaec-191dee392daa" />
+  <Project Path="../Game/Game.vcxproj" Id="8aef2a9f-1117-49e4-a4ad-58862ed29480" />
+  <Project Path="UmiEngine.vcxproj" Id="c4723276-ea9d-445a-b529-d23a26a7e61d" />
+</Solution>

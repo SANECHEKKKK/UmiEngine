@@ -1,0 +1,39 @@
+{
+  "Name": "ResolutionDropDownMenu",
+  "UiComponent": {
+    "Anchor": "MiddleCenter",
+    "Width": 0.1,
+    "Height": 0.05,
+    "OffsetX": 0.0,
+    "OffsetY": -0.3
+  },
+  "ButtonComponent": {
+    "Textures": {
+      "Normal": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Normal.png",
+      "Hovered": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Normal.png",
+      "Pressed": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Pressed.png",
+      "Disabled": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Normal.png"
+    }
+  },
+  "LayerComponent": 1,
+  "DropDownComponent": [
+    {
+      "ResolutionChange": {
+        "Width": 1280,
+        "Height": 720
+      }
+    },
+    {
+      "ResolutionChange": {
+        "Width": 1366,
+        "Height": 768
+      }
+    },
+    {
+      "ResolutionChange": {
+        "Width": 1440,
+        "Height": 900
+      }
+    }
+  ]
+}

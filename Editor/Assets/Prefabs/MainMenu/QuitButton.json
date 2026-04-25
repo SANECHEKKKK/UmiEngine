@@ -1,0 +1,34 @@
+{
+  "Name": "QuitButton",
+  "UiComponent": {
+    "Anchor": "MiddleCenter",
+    "Width": 0.1,
+    "Height": 0.08,
+    "OffsetX": 0.0,
+    "OffsetY": 0.3
+  },
+  "ButtonComponent": {
+    "Textures": {
+      "Normal": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Normal.png",
+      "Hovered": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Normal.png",
+      "Pressed": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Pressed.png",
+      "Disabled": "Assets\\Textures\\MainMenu\\Buttons\\UI_Flat_Button02a_Normal.png"
+    }
+  },
+  "LayerComponent": 1,
+  "TextComponent": {
+    "Text": "Quit",
+    "FontName": "DotGothic16",
+    "FontSize": 34,
+    "HorizontalAlignment": "Center",
+    "VerticalAlignment": "Center",
+    "Color": {
+      "r": 0.3,
+      "g": 0.3,
+      "b": 0.3,
+      "a": 1
+    },
+    "FontWeight": "Bold"
+  },
+  "QuitGame": {}
+}

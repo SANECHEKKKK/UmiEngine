@@ -1,0 +1,14 @@
+{
+  "Name": "LoadBackground",
+  "TextureComponent": {
+    "Path" : "Assets\\Textures\\LoadingState\\LoadingStateBackground.png"
+  },
+  "UiComponent": {
+    "Anchor": "MiddleCenter",
+    "Width": 1.0,
+    "Height": 1.0,
+    "OffsetX": 0.0,
+      "OffsetY": 0.0
+    },
+    "LayerComponent": 0
+  }

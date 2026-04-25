@@ -1,0 +1,14 @@
+{
+  "Name": "SettingsBackground",
+  "TextureComponent": {
+    "Path": "Assets\\Textures\\SettingsMenu\\SettingsBackground.png"
+  },
+  "UiComponent": {
+    "Anchor": "MiddleCenter",
+    "Width": 0.5,
+    "Height": 0.85,
+    "OffsetX": 0.0,
+      "OffsetY": 0.0
+    },
+    "LayerComponent": 0
+  }

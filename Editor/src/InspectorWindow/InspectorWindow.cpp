@@ -4,6 +4,7 @@
 #include <ID/ID.h>
 #include <EditorContext/EditorContext.h>
 #include <Transform/TransformComponent.h>
+#include <Model/ModelComponent.h>
 
 void Umi::InspectorWindow::Draw()
 {
@@ -22,11 +23,21 @@ void Umi::InspectorWindow::Draw()
     {
         auto& transform = registry.GetComponent<Transform3DComponent>(entity);
 
-        if (ImGui::CollapsingHeader("Transform"))
+        if (ImGui::CollapsingHeader(("Transform##" + std::to_string(entity)).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::DragFloat3("Position", &transform.pos.x, 0.1f);
             ImGui::DragFloat3("Rotation", &transform.rot.x, 0.1f);
             ImGui::DragFloat3("Scale", &transform.scale.x, 0.1f);
+        }
+    }
+
+    if (registry.HasComponent<ModelComponent>(entity))
+    {
+        auto& model = registry.GetComponent<ModelComponent>(entity);
+
+        if (ImGui::CollapsingHeader("Model"))
+        {
+            ImGui::Text("Model details here...");
         }
     }
 

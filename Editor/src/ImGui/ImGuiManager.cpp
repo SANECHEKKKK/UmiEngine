@@ -48,7 +48,7 @@ Umi::ImGuiManager::ImGuiManager(HWND hwnd, ID3D11Device* device, ID3D11DeviceCon
 	(void)io;
 
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 	ImGui::StyleColorsDark();

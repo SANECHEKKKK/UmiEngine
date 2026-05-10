@@ -137,6 +137,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\AssetBrowserWindow\AssetBrowserWindow.cpp" />
     <ClCompile Include="src\EditorContext\EditorContext.cpp" />
     <ClCompile Include="GameStates\MainMenuState\MainMenuState.cpp" />
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp" />
@@ -153,8 +154,10 @@
     <ClCompile Include="src\ImGui\imgui_tables.cpp" />
     <ClCompile Include="src\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\ViewPort\ViewPort.cpp" />
+    <ClCompile Include="ViewPortWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\AssetBrowserWindow\AssetBrowserWindow.h" />
     <ClInclude Include="src\EditorContext\EditorContext.h" />
     <ClInclude Include="GameStates\MainMenuState\MainMenuState.h" />
     <ClInclude Include="src\InspectorWindow\InspectorWindow.h" />
@@ -170,6 +173,7 @@
     <ClInclude Include="src\ImGui\imstb_textedit.h" />
     <ClInclude Include="src\ImGui\imstb_truetype.h" />
     <ClInclude Include="src\ViewPort\ViewPort.h" />
+    <ClInclude Include="ViewPortWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UmiEngine\UmiEngine.vcxproj">

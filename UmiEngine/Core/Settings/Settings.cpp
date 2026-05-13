@@ -1,11 +1,11 @@
-#include <Settings/Settings.h>
-
+module;
 #include <Windows.h>
 #include <fstream>
-
-#include <Json/json.hpp>
 #include <iostream>
 #include <sstream>
+#include <Json/json.hpp>
+module Settings;
+
 using json = nlohmann::json;
 
 using namespace Umi;

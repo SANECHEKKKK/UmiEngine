@@ -18,9 +18,6 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Editor\Editor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\ImGui\backends\imgui_impl_dx11.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -42,38 +39,17 @@
     <ClCompile Include="src\ImGui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ImGui\ImGuiManager.cpp">
+    <ClCompile Include="src\Editor\Editor.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GameStates\MainMenuState\MainMenuState.cpp">
+    <ClCompile Include="src\Editor\Editor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ViewPort\ViewPort.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\InspectorWindow\InspectorWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\HierarchyWindow\HierarchyWindow.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\EditorContext\EditorContext.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\AssetBrowserWindow\AssetBrowserWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ViewPortWindow.cpp">
+    <ClCompile Include="src\EditorContext\EditorContext.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Editor\Editor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\ImGui\backends\imgui_impl_dx11.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -89,9 +65,6 @@
     <ClInclude Include="src\ImGui\imgui_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ImGui\ImGuiManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\ImGui\imstb_rectpack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -99,27 +72,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ImGui\imstb_truetype.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ID\ID.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GameStates\MainMenuState\MainMenuState.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ViewPort\ViewPort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\InspectorWindow\InspectorWindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\EditorContext\EditorContext.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\AssetBrowserWindow\AssetBrowserWindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ViewPortWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

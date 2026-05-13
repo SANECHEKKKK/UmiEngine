@@ -137,43 +137,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\AssetBrowserWindow\AssetBrowserWindow.cpp" />
-    <ClCompile Include="src\EditorContext\EditorContext.cpp" />
-    <ClCompile Include="GameStates\MainMenuState\MainMenuState.cpp" />
-    <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp" />
-    <ClCompile Include="src\HierarchyWindow\HierarchyWindow.h" />
-    <ClCompile Include="src\InspectorWindow\InspectorWindow.cpp" />
-    <ClCompile Include="src\Editor\Editor.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="src\EditorContext\EditorContext.ixx" />
+    <ClCompile Include="src\Editor\Editor.cpp" />
+    <ClCompile Include="src\Editor\Editor.ixx" />
     <ClCompile Include="src\ImGui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="src\ImGui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="src\ImGui\imgui.cpp" />
-    <ClCompile Include="src\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="src\ImGui\imgui_demo.cpp" />
     <ClCompile Include="src\ImGui\imgui_draw.cpp" />
     <ClCompile Include="src\ImGui\imgui_tables.cpp" />
     <ClCompile Include="src\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="src\ViewPort\ViewPort.cpp" />
-    <ClCompile Include="ViewPortWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\AssetBrowserWindow\AssetBrowserWindow.h" />
-    <ClInclude Include="src\EditorContext\EditorContext.h" />
-    <ClInclude Include="GameStates\MainMenuState\MainMenuState.h" />
-    <ClInclude Include="src\InspectorWindow\InspectorWindow.h" />
-    <ClInclude Include="src\Editor\Editor.h" />
-    <ClInclude Include="src\ID\ID.h" />
     <ClInclude Include="src\ImGui\backends\imgui_impl_dx11.h" />
     <ClInclude Include="src\ImGui\backends\imgui_impl_win32.h" />
     <ClInclude Include="src\ImGui\imconfig.h" />
     <ClInclude Include="src\ImGui\imgui.h" />
-    <ClInclude Include="src\ImGui\ImGuiManager.h" />
     <ClInclude Include="src\ImGui\imgui_internal.h" />
     <ClInclude Include="src\ImGui\imstb_rectpack.h" />
     <ClInclude Include="src\ImGui\imstb_textedit.h" />
     <ClInclude Include="src\ImGui\imstb_truetype.h" />
-    <ClInclude Include="src\ViewPort\ViewPort.h" />
-    <ClInclude Include="ViewPortWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UmiEngine\UmiEngine.vcxproj">

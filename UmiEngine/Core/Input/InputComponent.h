@@ -1,5 +1,5 @@
 #pragma once
-#include <Math/Math.h>
+import Vector;
 
 namespace Umi
 {

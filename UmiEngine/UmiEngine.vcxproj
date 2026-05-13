@@ -19,179 +19,35 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Core\Active\ActiveComponent.cpp" />
-    <ClCompile Include="Core\Ai\AiComponent.cpp" />
-    <ClCompile Include="Core\Ai\AiSystem.cpp" />
-    <ClCompile Include="Core\Animation\Animation3D.cpp" />
-    <ClCompile Include="Core\Animation\AnimationManager.cpp" />
-    <ClCompile Include="Core\Animation\AnimationState.cpp" />
-    <ClCompile Include="Core\Animation\Animator2DComponent.cpp" />
-    <ClCompile Include="Core\Animation\Animator3DComponent.cpp" />
-    <ClCompile Include="Core\Bar\BarComponent.cpp" />
-    <ClCompile Include="Core\Bar\BarSystem.cpp" />
-    <ClCompile Include="Core\Button\ButtonComponent.cpp" />
-    <ClCompile Include="Core\Button\ButtonSystem.cpp" />
-    <ClCompile Include="Core\Camera\Camera.cpp" />
-    <ClCompile Include="Core\CheckBox\CheckBox.cpp" />
-    <ClCompile Include="Core\Collision\BoxCollider3DComponent.cpp" />
-    <ClCompile Include="Core\Collision\ColliderStaticPhysicsComponent.cpp" />
-    <ClCompile Include="Core\Collision\ColliderTriggerComponent.cpp" />
-    <ClCompile Include="Core\Collision\CollisionSystem.cpp" />
-    <ClCompile Include="Core\Collision\TriggerEvent.cpp" />
-    <ClCompile Include="Core\DropDownMenu\DropDownMenu.cpp" />
-    <ClCompile Include="Core\DropDownMenu\DropDownMenuHeader.cpp" />
-    <ClCompile Include="Core\EngineContext\EngineContext.cpp" />
-    <ClCompile Include="Core\Entity\Entity.cpp" />
-    <ClCompile Include="Core\Error\Error.cpp" />
-    <ClCompile Include="Core\Error\ErrorManager.cpp" />
-    <ClCompile Include="Core\Events\AttackEvent\AttackEvent.cpp" />
-    <ClCompile Include="Core\Events\ExitToMainMenu\ExitToMainMenu.cpp" />
-    <ClCompile Include="Core\Events\LoadState\LoadState.cpp" />
-    <ClCompile Include="Core\Events\OpenSettings\OpenSettings.cpp" />
-    <ClCompile Include="Core\Events\QuitGame\QuitGame.cpp" />
-    <ClCompile Include="Core\Events\ResolutionChange\ResolutionChange.cpp" />
-    <ClCompile Include="Core\Events\VsyncToggle\VSyncToggle.cpp" />
-    <ClCompile Include="Core\GameState\GameState.cpp" />
-    <ClCompile Include="Core\Graphics\Graphics.cpp" />
+    <ClCompile Include="Core\Context\EngineContext.ixx" />
+    <ClCompile Include="Core\Entity\Entity.ixx" />
+    <ClCompile Include="Core\Graphics\GraphicsManager.cpp" />
     <ClCompile Include="Core\Input\InputComponent.cpp" />
     <ClCompile Include="Core\Input\InputManager.cpp" />
-    <ClCompile Include="Core\Input\InputSystem.cpp" />
+    <ClCompile Include="Core\Input\InputSystem.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Core\Input\Keyboard.cpp" />
     <ClCompile Include="Core\Input\Mouse.cpp" />
-    <ClCompile Include="Core\Layer\LayerComponent.cpp" />
-    <ClCompile Include="Core\LoadingState\LoadingState.cpp" />
-    <ClCompile Include="Core\LoadManager\LoadManager.cpp" />
-    <ClCompile Include="Core\Math\Math.cpp" />
-    <ClCompile Include="Core\Model\Model.cpp" />
-    <ClCompile Include="Core\Model\ModelComponent.cpp" />
-    <ClCompile Include="Core\Model\ModelManager.cpp" />
-    <ClCompile Include="Core\Prefab\Prefab.cpp" />
-    <ClCompile Include="Core\Prefab\PrefabManager.cpp" />
-    <ClCompile Include="Core\Prefab\PrefabRequest.cpp" />
-    <ClCompile Include="Core\Registry\Registry.cpp" />
-    <ClCompile Include="Core\Rendering\Renderer.cpp" />
-    <ClCompile Include="Core\Rendering\RenderSystem.cpp" />
-    <ClCompile Include="Core\Resolution\Resolution.cpp" />
+    <ClCompile Include="Core\Math\Vector.ixx" />
+    <ClCompile Include="Core\Resolution\Resolution.ixx" />
     <ClCompile Include="Core\Settings\Settings.cpp" />
-    <ClCompile Include="Core\Shaders\Shaders.cpp" />
-    <ClCompile Include="Core\Signal\Signal.cpp" />
-    <ClCompile Include="Core\StateRegistry\StateDescripton.cpp" />
-    <ClCompile Include="Core\StateRegistry\StateID.cpp" />
-    <ClCompile Include="Core\StateRegistry\StateRegistry.cpp" />
-    <ClCompile Include="Core\State\StateComponent.cpp" />
-    <ClCompile Include="Core\StringID\StringID.cpp" />
-    <ClCompile Include="Core\Tag\TagComponent.cpp" />
-    <ClCompile Include="Core\Texture\Rect.cpp" />
-    <ClCompile Include="Core\Texture\TextureComponent.cpp" />
-    <ClCompile Include="Core\Texture\TextureManager.cpp" />
-    <ClCompile Include="Core\Text\TextComponent.cpp" />
-    <ClCompile Include="Core\Time\Time.cpp" />
-    <ClCompile Include="Core\Transform\TransformComponent.cpp" />
-    <ClCompile Include="Core\Ui\UiComponent.cpp" />
-    <ClCompile Include="Core\Ui\UiSystem.cpp" />
-    <ClCompile Include="Core\Vertex\Vertex.cpp" />
+    <ClCompile Include="Core\Settings\Settings.ixx" />
+    <ClCompile Include="Core\Time\Time.ixx" />
     <ClCompile Include="Core\Window\Window .cpp" />
-    <ClCompile Include="Editor\src\HierarchyWindow\HierarchyWindow.cpp" />
-    <ClCompile Include="Editor\src\HierarchyWindow\HierarchyWindow.ixx" />
+    <ClCompile Include="Core\Graphics\GraphicsManager.ixx" />
+    <ClCompile Include="Core\Window\Window.ixx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Core\Active\ActiveComponent.h" />
-    <ClInclude Include="Core\Ai\AiComponent.h" />
-    <ClInclude Include="Core\Ai\AiSystem.h" />
-    <ClInclude Include="Core\Animation\Animation3D.h" />
-    <ClInclude Include="Core\Animation\AnimationManager.h" />
-    <ClInclude Include="Core\Animation\AnimationState.h" />
-    <ClInclude Include="Core\Animation\Animator2DComponent.h" />
-    <ClInclude Include="Core\Animation\Animator3DComponent.h" />
-    <ClInclude Include="Core\Bar\BarComponent.h" />
-    <ClInclude Include="Core\Bar\BarSystem.h" />
-    <ClInclude Include="Core\Button\ButtonComponent.h" />
-    <ClInclude Include="Core\Button\ButtonSystem.h" />
-    <ClInclude Include="Core\Camera\Camera.h" />
-    <ClInclude Include="Core\CheckBox\CheckBox.h" />
-    <ClInclude Include="Core\Collision\BoxCollider3DComponent.h" />
-    <ClInclude Include="Core\Collision\ColliderStaticPhysicsComponent.h" />
-    <ClInclude Include="Core\Collision\ColliderTriggerComponent.h" />
-    <ClInclude Include="Core\Collision\CollisionSystem.h" />
-    <ClInclude Include="Core\Collision\TriggerEvent.h" />
-    <ClInclude Include="Core\DirectXTex\DirectXTex.h" />
-    <ClInclude Include="Core\DropDownMenu\DropDownMenu.h" />
-    <ClInclude Include="Core\DropDownMenu\DropDownMenuHeader.h" />
-    <ClInclude Include="Core\EngineContext\EngineContext.h" />
-    <ClInclude Include="Core\Entity\Entity.h" />
-    <ClInclude Include="Core\Error\Error.h" />
-    <ClInclude Include="Core\Error\ErrorManager.h" />
-    <ClInclude Include="Core\Events\AttackEvent\AttackEvent.h" />
-    <ClInclude Include="Core\Events\ExitToMainMenu\ExitToMainMenu.h" />
-    <ClInclude Include="Core\Events\LoadState\LoadState.h" />
-    <ClInclude Include="Core\Events\OpenSettings\OpenSettings.h" />
-    <ClInclude Include="Core\Events\QuitGame\QuitGame.h" />
-    <ClInclude Include="Core\Events\ResolutionChange\ResolutionChange.h" />
-    <ClInclude Include="Core\Events\VsyncToggle\VSyncToggle.h" />
-    <ClInclude Include="Core\GameState\GameState.h" />
-    <ClInclude Include="Core\Graphics\Graphics.h" />
+    <ClInclude Include="Core\Graphics\d3dx12.h" />
     <ClInclude Include="Core\Input\InputComponent.h" />
     <ClInclude Include="Core\Input\InputManager.h" />
-    <ClInclude Include="Core\Input\InputSystem.h" />
+    <ClInclude Include="Core\Input\InputSystem.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="Core\Input\Keyboard.h" />
     <ClInclude Include="Core\Input\Mouse.h" />
     <ClInclude Include="Core\Json\json.hpp" />
-    <ClInclude Include="Core\Layer\LayerComponent.h" />
-    <ClInclude Include="Core\LoadingState\LoadingState.h" />
-    <ClInclude Include="Core\LoadManager\LoadManager.h" />
-    <ClInclude Include="Core\Math\Math.h" />
-    <ClInclude Include="Core\Model\Model.h" />
-    <ClInclude Include="Core\Model\ModelComponent.h" />
-    <ClInclude Include="Core\Model\ModelManager.h" />
-    <ClInclude Include="Core\Prefab\Prefab.h" />
-    <ClInclude Include="Core\Prefab\PrefabManager.h" />
-    <ClInclude Include="Core\Prefab\PrefabRequest.h" />
-    <ClInclude Include="Core\Registry\Registry.h" />
-    <ClInclude Include="Core\Rendering\Renderer.h" />
-    <ClInclude Include="Core\Rendering\RenderSystem.h" />
-    <ClInclude Include="Core\Resolution\Resolution.h" />
-    <ClInclude Include="Core\Settings\Settings.h" />
-    <ClInclude Include="Core\Shaders\Shaders.h" />
-    <ClInclude Include="Core\Signal\Signal.h" />
-    <ClInclude Include="Core\StateRegistry\StateDescription.h" />
-    <ClInclude Include="Core\StateRegistry\StateID.h" />
-    <ClInclude Include="Core\StateRegistry\StateRegistry.h" />
-    <ClInclude Include="Core\State\StateComponent.h" />
-    <ClInclude Include="Core\StringID\StringID.h" />
-    <ClInclude Include="Core\Tag\TagComponent.h" />
-    <ClInclude Include="Core\Texture\Rect.h" />
-    <ClInclude Include="Core\Texture\TextureComponent.h" />
-    <ClInclude Include="Core\Texture\TextureManager.h" />
-    <ClInclude Include="Core\Text\TextComponent.h" />
-    <ClInclude Include="Core\Time\Time.h" />
-    <ClInclude Include="Core\Transform\TransformComponent.h" />
-    <ClInclude Include="Core\Ui\UiComponent.h" />
-    <ClInclude Include="Core\Ui\UiSystem.h" />
-    <ClInclude Include="Core\Vertex\Vertex.h" />
-    <ClInclude Include="Core\Window\Window.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Core\DirectXTex\DirectXTex.inl" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Core\Shaders\shaderPixel2D.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Core\Shaders%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="Core\Shaders\shaderPixel3D.hlsl">
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Core\Shaders%(Filename).cso</ObjectFileOutput>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0_level_9_3</ShaderModel>
-    </FxCompile>
-    <FxCompile Include="Core\Shaders\shaderVertex2D.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Core\Shaders%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="Core\Shaders\shaderVertex3D.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Core\Shaders%(Filename).cso</ObjectFileOutput>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
-    </FxCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

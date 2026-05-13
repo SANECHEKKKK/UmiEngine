@@ -1,11 +1,15 @@
-#include <Window/Window.h>
+module;
+#include <windows.h>
+#include <memory>
+module Window;
+
 //#include "UmiEventManager.h"
-#include <EngineContext/EngineContext.h>
-#include <Graphics/Graphics.h>
-#include <Settings/Settings.h>
-#include <Texture/TextureManager.h>
-#include <Input/InputManager.h>
-#include <Resolution/Resolution.h>
+//#include <EngineContext/EngineContext.h>
+//#include <Graphics/Graphics.h>
+//#include <Settings/Settings.h>
+//#include <Texture/TextureManager.h>
+//#include <Input/InputManager.h>
+//#include <Resolution/Resolution.h>
 
 using namespace Umi;
 
@@ -13,7 +17,7 @@ Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineCont
 	: hInstance(hInstance), engineContext(engineContext)
 {
 
-	Resolution bufferResolution = engineContext.settings.getResolution();
+	//Resolution bufferResolution = engineContext.settings.getResolution();
 
 	WNDCLASSEX wcex{};
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -29,7 +33,8 @@ Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineCont
 
 	RegisterClassEx(&wcex);
 
-	RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
+	//RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
+	RECT wr = { 0, 0, 1200, 720};
 	AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, FALSE);
 
 	hWnd = CreateWindowEx(
@@ -48,18 +53,18 @@ Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineCont
 		return;
 	}
 
-	if (engineContext.settings.isWindowedFullScreenMode())
-	{
-		SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-		SetWindowPos(hWnd, HWND_TOP, 0, 0, bufferResolution.width, bufferResolution.height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
-	}
+	//if (engineContext.settings.isWindowedFullScreenMode())
+	//{
+	//	SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+	//	SetWindowPos(hWnd, HWND_TOP, 0, 0, bufferResolution.width, bufferResolution.height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+	//}
 
-	graphics = std::make_unique<Graphics>(hWnd, engineContext);
+	graphics = std::make_unique<GraphicsManager>(hWnd);
 
-	if (graphics->DirectXGetSwapChain())
-	{
-		engineContext.textureManager.Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
-	}
+	//if (graphics->DirectXGetSwapChain())
+	//{
+	//	engineContext.textureManager.Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
+	//}
 	//UmiEngineContext::GetRenderManager().Init(graphics.get());
 	//UmiEngineContext::GetTextureManager().Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
 	//UmiEngineContext::GetModelManager().Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
@@ -69,7 +74,7 @@ Window::~Window()
 {
 	if (hWnd != nullptr)
 	{
-		graphics->~Graphics();
+		//graphics->~Graphics();
 		DestroyWindow(hWnd);
 		UnregisterClass(windowClassName, hInstance);
 	}
@@ -100,7 +105,7 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(
 
 LRESULT Window::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	engineContext.inputManager.UpdateRawInput(msg, wParam, lParam);
+	//engineContext.inputManager.UpdateRawInput(msg, wParam, lParam);
 
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
 		return true;
@@ -141,7 +146,7 @@ bool Window::ProcessMessages()
 
 void Window::SetResolution(int width, int height)
 {
-	engineContext.settings.setResolution(width, height);
+	//engineContext.settings.setResolution(width, height);
 	if (hWnd != nullptr) {
 
 		SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX);
@@ -161,22 +166,24 @@ void Window::SetResolution(int width, int height)
 
 		ShowWindow(hWnd, SW_RESTORE);
 	}
-	graphics->Reset();
+	//graphics->Reset();
 
 }
 
 void Window::SetWindowedFullScreen()
 {
-	engineContext.settings.setWindowedFullScreenMode(true);
-	Resolution bufferResolution = engineContext.settings.getScreenResolution();
+	//engineContext.settings.setWindowedFullScreenMode(true);
+	//Resolution bufferResolution = engineContext.settings.getScreenResolution();
 	if (hWnd != nullptr) {
-		RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
+		//RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
+		RECT wr = { 0, 0, 1200, 720 };
 		AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 		SetWindowPos(hWnd, nullptr, 0, 0, wr.right - wr.left, wr.bottom - wr.top,
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 		SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-		SetWindowPos(hWnd, HWND_TOP, 0, 0, bufferResolution.width, bufferResolution.height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
-		graphics->Reset();
+		//SetWindowPos(hWnd, HWND_TOP, 0, 0, bufferResolution.width, bufferResolution.height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+		SetWindowPos(hWnd, HWND_TOP, 0, 0, 1200, 720, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+		//graphics->Reset();
 	}
 	//EventManager::Get().ResolutionChanged();
 
@@ -184,11 +191,11 @@ void Window::SetWindowedFullScreen()
 
 void Window::SetFullScreen(bool mode)
 {
-	engineContext.settings.setWindowedFullScreenMode(mode);
-	if (hWnd != nullptr) {
-		graphics->SetFullScreen(mode);
-	}
-	graphics->Reset();
+	//engineContext.settings.setWindowedFullScreenMode(mode);
+	//if (hWnd != nullptr) {
+	//	graphics->SetFullScreen(mode);
+	//}
+	//graphics->Reset();
 	//EventManager::Get().ResolutionChanged();
 
 }

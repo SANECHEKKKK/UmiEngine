@@ -2,12 +2,10 @@ export module EditorContext;
 
 import Entity;
 
-namespace Umi
+export namespace Umi
 {
 	struct EditorContext
 	{
-		Entity selectedEntity = Umi::INVALID_ENTITY;
-
-		EditorContext() = default;
+		Entity selectedEntity { INVALID_ENTITY };
 	};
 }

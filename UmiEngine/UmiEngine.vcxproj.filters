@@ -48,7 +48,7 @@
     <ClCompile Include="Core\Time\Time.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core\Context\EngineContext.ixx">
+    <ClCompile Include="Core\EngineContext\EngineContext.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Core\Entity\Entity.ixx">
@@ -61,6 +61,24 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Core\Settings\Settings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Model\Model.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Vertex\Vertex.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Transform\Transform.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Model\ModelManager.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Model\ModelManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Registry\Registry.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -86,5 +104,9 @@
     <ClInclude Include="Core\Graphics\d3dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Core\Shaders\BasicVertexShader.hlsl" />
+    <FxCompile Include="Core\Shaders\BasicPixelShader.hlsl" />
   </ItemGroup>
 </Project>

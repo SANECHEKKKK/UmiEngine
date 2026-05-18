@@ -22,15 +22,17 @@ import Settings;
 //#include <Model/ModelManager.h>
 //#include <Error/ErrorManager.h>
 ////----------------------------------//
-//
-//#include <EditorContext/EditorContext.h>
-//
+
+import EditorContext;
+
 //#include <Prefab/PrefabRequest.h>
 //#include <StateRegistry/StateRegistry.h>
-//#include <Registry/Registry.h>
+import Registry;
 //
 //#include <Rendering/RenderSystem.h>
 //#include <Ui/UiSystem.h>
+
+import ImGuiManager;
 
 export namespace Umi
 {
@@ -42,6 +44,9 @@ export namespace Umi
 		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
 		static constexpr float kFixedStep = 1.0f / 120.0f;
 
+		Umi::Registry registry;
+		Umi::EditorContext editorContext;
+
 		Umi::Settings settings;
 		//Umi::TextureManager textureManager;
 		//Umi::InputManager inputManager{ settings };
@@ -50,13 +55,11 @@ export namespace Umi
 		Umi::Window window;
 		//Umi::Renderer renderer;
 		//Umi::ImGuiManager imGuiManager;
-		//Umi::EditorContext editorContext;
 		//Umi::PrefabManager prefabManager{ engineContext };
 		//Umi::LoadManager loadManager{ engineContext };
 		//Umi::ModelManager modelManager;
 		//Umi::ErrorManager errorManager{ registry };
-
-		//Umi::Registry registry;
+		Umi::ImGuiManager imGuiManager;
 
 		//Umi::RenderSystem renderSystem{ registry, renderer };
 		//Umi::UiSystem uiSystem{ registry };
@@ -70,69 +73,23 @@ export namespace Umi
 
 		bool bootPrefabsLoaded = false;
 
-		//Umi::StateRegistry stateRegistry;
-
-		//----------------DEBUG RELATED----------------//
-#ifdef _DEBUG
-
-#endif // !_DEBUG
-		//---------------------------------------------//
-
 		LARGE_INTEGER currentTime;
 		LARGE_INTEGER lastTime;
 		LARGE_INTEGER frequency;
 
 		float elapsed;
 
+		void RequestExit() { isRunning = false; }
+
 		void FrameTick(float deltaTime, float& accumulator);
 
-		//---------------------------//
-		//Umi::Signal HandleInput();
-		//Umi::Signal Update();
-		void Render();
-		//Umi::Signal HandleEvents();
-		//---------------------------//
-
-		//----------------STACK RELATED----------------//
-		//void AddState(std::unique_ptr<Umi::GameState>);
-		//void AddState(Umi::StringID stateId);
-		void PopState();
-		void ClearStack();
-		void CloseGame();
-
-		//---------------SETTINGS RELATED--------------//
-		void ChangeResolution(int width, int height);
-		void SetWindowedFullScreen();
-		void SetFullScreen();
-		//---------------------------------------------//
-
-		void RequestExit();
-
-		//void HandleSignal(Umi::Signal signal);
-		//void HandleError(Umi::ErrorCode errorCode);
-
-		//void LoadState(Umi::StringID stateId);
-
-		bool ProcessMessages();
-
+		//void Render();
+		
 	public:
-		//template<typename T>
-		//void CreateStateDescription(Umi::StringID stateId, Umi::PrefabRequest prefabRequest)
-		//{
-		//	stateRegistry.Register(stateId,
-		//		Umi::StateDescription{
-		//			prefabRequest,
-		//			[](Umi::EngineContext& engineContext) {
-		//				return std::make_unique<T>(engineContext);
-		//			}
-		//		}
-		//	);
-		//}
-
 
 		void Run();
 
 		Editor(HINSTANCE hInstance, const char* title);
-		~Editor();
+		~Editor() = default;
 	};
 }

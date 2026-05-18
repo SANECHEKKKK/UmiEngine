@@ -65,16 +65,13 @@ Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineCont
 	//{
 	//	engineContext.textureManager.Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
 	//}
-	//UmiEngineContext::GetRenderManager().Init(graphics.get());
-	//UmiEngineContext::GetTextureManager().Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
-	//UmiEngineContext::GetModelManager().Init(graphics->DirectXGetDevice(), graphics->DirectXGetDeviceContext());
 }
 
 Window::~Window()
 {
 	if (hWnd != nullptr)
 	{
-		//graphics->~Graphics();
+		graphics->~GraphicsManager();
 		DestroyWindow(hWnd);
 		UnregisterClass(windowClassName, hInstance);
 	}

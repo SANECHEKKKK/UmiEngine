@@ -2,10 +2,10 @@
     "fullscreenMode": false,
     "masterVolume": 0.5,
     "maxFps": -1,
-    "resolutionHeight": 720,
-    "resolutionWidth": 1280,
+    "resolutionHeight": 0,
+    "resolutionWidth": 0,
     "screenHeight": 864,
     "screenWidth": 1536,
-    "vSyncEnable": false,
+    "vSyncEnable": true,
     "windowedFullScreenMode": false
 }

@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Core\Context\EngineContext.ixx" />
+    <ClCompile Include="Core\EngineContext\EngineContext.ixx" />
     <ClCompile Include="Core\Entity\Entity.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsManager.cpp" />
     <ClCompile Include="Core\Input\InputComponent.cpp" />
@@ -30,10 +30,16 @@
     <ClCompile Include="Core\Input\Keyboard.cpp" />
     <ClCompile Include="Core\Input\Mouse.cpp" />
     <ClCompile Include="Core\Math\Vector.ixx" />
+    <ClCompile Include="Core\Model\Model.ixx" />
+    <ClCompile Include="Core\Model\ModelManager.cpp" />
+    <ClCompile Include="Core\Model\ModelManager.ixx" />
+    <ClCompile Include="Core\Registry\Registry.ixx" />
     <ClCompile Include="Core\Resolution\Resolution.ixx" />
     <ClCompile Include="Core\Settings\Settings.cpp" />
     <ClCompile Include="Core\Settings\Settings.ixx" />
     <ClCompile Include="Core\Time\Time.ixx" />
+    <ClCompile Include="Core\Transform\Transform.ixx" />
+    <ClCompile Include="Core\Vertex\Vertex.ixx" />
     <ClCompile Include="Core\Window\Window .cpp" />
     <ClCompile Include="Core\Graphics\GraphicsManager.ixx" />
     <ClCompile Include="Core\Window\Window.ixx" />
@@ -48,6 +54,24 @@
     <ClInclude Include="Core\Input\Keyboard.h" />
     <ClInclude Include="Core\Input\Mouse.h" />
     <ClInclude Include="Core\Json\json.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Core\Shaders\BasicPixelShader.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">BasicPS</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">BasicPS</EntryPointName>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Core\Shaders\BasicVertexShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">BasicVS</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">BasicVS</EntryPointName>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

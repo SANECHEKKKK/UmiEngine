@@ -1,11 +1,14 @@
 module;
+#define NOMINMAX
 #include <windows.h>
+#include <algorithm>
 
 #pragma comment (lib, "winmm.lib")
 module Editor;
 
 import Time;
 import Settings;
+import EditorContext;
 
 //#include <Signal/Signal.h>
 //#include <GameState/GameState.h>
@@ -24,22 +27,10 @@ import Settings;
 using namespace Umi;
 
 Editor::Editor(HINSTANCE hInstance, const char* title)
-	: window(hInstance, title, engineContext)
-	//renderer(&window.GetGraphics(), engineContext),
-	//imGuiManager(window.GetHWND(), window.GetGraphics().DirectXGetDevice(), window.GetGraphics().DirectXGetDeviceContext(), engineContext.registry, editorContext),
-	//modelManager(window.GetGraphics().DirectXGetDevice(), window.GetGraphics().DirectXGetDeviceContext())
+	: window(hInstance, title, engineContext),
+	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), registry, editorContext)
 {
-	//loadManager.LoadThread(bootPrefabs);
 
-	//CreateStateDescription<MainMenuState>(MainMenuStateID,
-	//	{
-	//		.folders = { "MainMenu" }
-	//	});
-
-	//gameStack.reserve(10);
-	//LoadState(MainMenuStateID);
-
-	//ChangeResolution(1280, 720);
 }
 
 void Editor::Run()
@@ -79,6 +70,7 @@ void Editor::Run()
 
 		// Spike guard: clamp runaway deltas (debugger pause, OS preemption).
 		float deltaTime = std::min(rawDelta, kMaxDeltaTime);
+		accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime); // Prevent spiral of death from accumulating too much time.
 
 		// ── 3. Frame ───────────────────────────────────────────────────────
 		FrameTick(deltaTime, accumulator);
@@ -113,28 +105,33 @@ void Editor::Run()
 
 void Editor::FrameTick(float deltaTime, float& accumulator)
 {
-	inputManager.keyboard.Update();
-	inputManager.mouse.Update();
+	//inputManager.keyboard.Update();
+	//inputManager.mouse.Update();
 
-	HandleSignal(HandleInput());
+	//HandleSignal(HandleInput());
 
 	accumulator += deltaTime;
+	//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
 	while (accumulator >= kFixedStep)
 	{
-		FixedUpdate(kFixedStep);
+		//FixedUpdate(kFixedStep);
 		accumulator -= kFixedStep;
 	}
 
 	const float alpha = accumulator / kFixedStep;
 
-	HandleSignal(Update(deltaTime));
+	//HandleSignal(Update(deltaTime));
 
-	window.GetGraphics().Clear();
-	Render(alpha);
-	imGuiManager.DrawBegin();
-	RenderImGui();
-	imGuiManager.DrawEnd();
-	window.GetGraphics().Present();
+	window.GetGraphics().FrameStart();
+	window.GetGraphics().Render();
+	imGuiManager.Render();
+	window.GetGraphics().FrameEnd();
+	//window.GetGraphics().Clear();
+	//Render(alpha);
+	//imGuiManager.DrawBegin();
+	//RenderImGui();
+	//imGuiManager.DrawEnd();
+	//window.GetGraphics().Present();
 
-	HandleSignal(HandleEvents());
+	//HandleSignal(HandleEvents());
 }

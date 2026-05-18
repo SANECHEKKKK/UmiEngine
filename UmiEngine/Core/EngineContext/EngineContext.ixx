@@ -18,7 +18,7 @@ export namespace Umi
 		//ModelManager& modelManager;
 		//ErrorManager& errorManager;
 	
-		EngineContext(Settings& settings);
+		EngineContext(Settings& settings) : settings(settings) {};
 		//	TextureManager& textureManager,
 		//	Renderer& renderer,
 		//	PrefabManager& prefabManager,

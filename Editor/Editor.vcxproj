@@ -104,7 +104,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;EDITOR_MODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -123,7 +123,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;EDITOR_MODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -135,23 +135,33 @@
       <AdditionalLibraryDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>DirectXTex_Release.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="src\EditorContext\EditorContext.ixx" />
     <ClCompile Include="src\Editor\Editor.cpp" />
     <ClCompile Include="src\Editor\Editor.ixx" />
-    <ClCompile Include="src\ImGui\backends\imgui_impl_dx11.cpp" />
-    <ClCompile Include="src\ImGui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp" />
+    <ClCompile Include="src\HierarchyWindow\HierarchyWindow.ixx" />
+    <ClCompile Include="src\ID\ID.ixx" />
+    <ClCompile Include="src\ImGui\ImguiManager.cpp" />
+    <ClCompile Include="src\ImGui\ImGuiManager.ixx" />
+    <ClCompile Include="src\ImGui\imgui_impl_dx12.cpp" />
+    <ClCompile Include="src\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="src\ImGui\imgui.cpp" />
     <ClCompile Include="src\ImGui\imgui_demo.cpp" />
     <ClCompile Include="src\ImGui\imgui_draw.cpp" />
     <ClCompile Include="src\ImGui\imgui_tables.cpp" />
     <ClCompile Include="src\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="src\InspectorWindow\InspectorWindow.cpp" />
+    <ClCompile Include="src\InspectorWindow\InspectorWindow.ixx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ImGui\backends\imgui_impl_dx11.h" />
-    <ClInclude Include="src\ImGui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="src\ImGui\imgui_impl_dx12.h" />
+    <ClInclude Include="src\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="src\ImGui\imconfig.h" />
     <ClInclude Include="src\ImGui\imgui.h" />
     <ClInclude Include="src\ImGui\imgui_internal.h" />

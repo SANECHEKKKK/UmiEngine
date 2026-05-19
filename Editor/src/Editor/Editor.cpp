@@ -30,7 +30,7 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
 	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), registry, editorContext)
 {
-
+	window.SetResolution(1200, 720);
 }
 
 void Editor::Run()

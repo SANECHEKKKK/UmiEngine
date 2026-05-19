@@ -364,7 +364,7 @@ GraphicsManager::GraphicsManager(HWND hwnd)
 	//-------------SWAPCHAIN-------------
 	DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
 
-	swapchainDesc.Width = 1280;
+	swapchainDesc.Width = 1200;
 	swapchainDesc.Height = 720;
 	swapchainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapchainDesc.Stereo = false;

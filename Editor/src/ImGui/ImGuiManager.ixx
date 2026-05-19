@@ -11,6 +11,8 @@ import InspectorWindow;
 import GraphicsManager;
 import HierarchyWindow;
 
+import Entity;
+
 export namespace Umi
 {
 	class ImGuiManager
@@ -24,7 +26,7 @@ export namespace Umi
 
 		ID3D12GraphicsCommandList* commandList = nullptr;
 
-		void InspectorWindow();
+		void RenderDockingSpace();
 	public:
 		void Render();
 

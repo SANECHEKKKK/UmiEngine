@@ -37,6 +37,8 @@
     <ClCompile Include="Core\Resolution\Resolution.ixx" />
     <ClCompile Include="Core\Settings\Settings.cpp" />
     <ClCompile Include="Core\Settings\Settings.ixx" />
+    <ClCompile Include="Core\Texture\Texture.ixx" />
+    <ClCompile Include="Core\Texture\TextureManager.ixx" />
     <ClCompile Include="Core\Time\Time.ixx" />
     <ClCompile Include="Core\Transform\Transform.ixx" />
     <ClCompile Include="Core\Vertex\Vertex.ixx" />

@@ -116,6 +116,9 @@
       <AdditionalLibraryDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>DirectXTex_Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -136,11 +139,13 @@
       <AdditionalDependencies>DirectXTex_Release.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>true</EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="src\AssetBrowser\AssetBrowser.cpp" />
+    <ClCompile Include="src\AssetBrowser\AssetBrowser.ixx" />
     <ClCompile Include="src\EditorContext\EditorContext.ixx" />
     <ClCompile Include="src\Editor\Editor.cpp" />
     <ClCompile Include="src\Editor\Editor.ixx" />

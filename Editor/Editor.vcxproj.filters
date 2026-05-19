@@ -69,6 +69,12 @@
     <ClCompile Include="src\ID\ID.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\AssetBrowser\AssetBrowser.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AssetBrowser\AssetBrowser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ImGui\imgui_impl_win32.h">

@@ -9,30 +9,12 @@ export module Editor;
 import Window;
 import EngineContext;
 
-//#include <Window/Window.h>
-//
-////----------ENGINE CONTEXT----------//
-//#include <EngineContext/EngineContext.h>
 import Settings;
-//#include <Rendering/Renderer.h>
-//#include <Texture/TextureManager.h>
-//#include <Prefab/PrefabManager.h>
-//#include <LoadManager/LoadManager.h>
-//#include <Input/InputManager.h>
-//#include <Model/ModelManager.h>
-//#include <Error/ErrorManager.h>
-////----------------------------------//
 
 import EditorContext;
-
-//#include <Prefab/PrefabRequest.h>
-//#include <StateRegistry/StateRegistry.h>
 import Registry;
-//
-//#include <Rendering/RenderSystem.h>
-//#include <Ui/UiSystem.h>
-
-import ImGuiManager;
+import TextureManager;
+//import ImGuiManager;
 
 export namespace Umi
 {
@@ -43,28 +25,17 @@ export namespace Umi
 
 		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
 		static constexpr float kFixedStep = 1.0f / 120.0f;
+		Umi::EngineContext engineContext{ registry, settings, textureManager };
 
-		Umi::Registry registry;
+		Umi::Window window;
+
 		Umi::EditorContext editorContext;
 
+		Umi::Registry registry;
+
 		Umi::Settings settings;
-		//Umi::TextureManager textureManager;
-		//Umi::InputManager inputManager{ settings };
-		//Umi::EngineContext engineContext{ settings, textureManager, renderer, prefabManager, loadManager, inputManager, registry, uiSystem, modelManager, errorManager };
-		Umi::EngineContext engineContext{ settings };
-		Umi::Window window;
-		//Umi::Renderer renderer;
+		Umi::TextureManager textureManager;
 		//Umi::ImGuiManager imGuiManager;
-		//Umi::PrefabManager prefabManager{ engineContext };
-		//Umi::LoadManager loadManager{ engineContext };
-		//Umi::ModelManager modelManager;
-		//Umi::ErrorManager errorManager{ registry };
-		Umi::ImGuiManager imGuiManager;
-
-		//Umi::RenderSystem renderSystem{ registry, renderer };
-		//Umi::UiSystem uiSystem{ registry };
-
-
 		//std::vector<std::unique_ptr<Umi::GameState>> gameStack;
 
 		//Umi::PrefabRequest bootPrefabs{
@@ -82,8 +53,6 @@ export namespace Umi
 		void RequestExit() { isRunning = false; }
 
 		void FrameTick(float deltaTime, float& accumulator);
-
-		//void Render();
 		
 	public:
 

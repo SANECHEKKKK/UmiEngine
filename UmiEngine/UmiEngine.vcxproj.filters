@@ -87,6 +87,24 @@
     <ClCompile Include="Core\Texture\Texture.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Texture\TextureManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Graphics\GraphicsContext.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Graphics\RenderManager.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Graphics\RenderManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Error\Error.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Camera\Camera.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Input\InputComponent.h">
@@ -112,7 +130,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Core\Shaders\BasicVertexShader.hlsl" />
-    <FxCompile Include="Core\Shaders\BasicPixelShader.hlsl" />
+    <FxCompile Include="Core\Shaders\BasicVertexShader.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Core\Shaders\BasicPixelShader.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Core\Shaders\2DBasicPixelShader.hlsl" />
+    <FxCompile Include="Core\Shaders\2DBasicVertexShader.hlsl" />
   </ItemGroup>
 </Project>

@@ -1,26 +1,42 @@
 module;
+#include <string>
 #include <string_view>
+#include <vector>
+#include <wrl/client.h>
+
+#include <Graphics/d3dx12.h>
 export module TextureManager;
 
 import Texture;
+import GraphicsContext;
 
-namespace Umi
+using Microsoft::WRL::ComPtr;
+
+export namespace Umi
 {
 	struct TextureData
 	{
-
+		ComPtr<ID3D12DescriptorHeap> texDescHeap = nullptr;
+		ComPtr<ID3D12Resource> texBuff = nullptr;
+		std::string filePath;
 	};
 
-	export class TextureManager
+	class TextureManager
 	{
 	private:
+		GraphicsContext& graphicsContext;
 
+		std::vector<TextureData> textureList;
 
 	public:
-			TextureID LoadTexture(std::string_view filePath);
-			void UnloadTexture(TextureID id);
+		TextureID LoadTexture(std::string_view filePath);
+		void UnloadTexture(TextureID id);
+		TextureData& GetTextureData(TextureID id);
 
-			TextureManager();
+		TextureManager(GraphicsContext& graphicsContext) : graphicsContext(graphicsContext) 
+		{
+			textureList.reserve(64);
+		};
 	};
-	
+
 }

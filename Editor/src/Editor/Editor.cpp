@@ -9,6 +9,8 @@ module Editor;
 import Time;
 import Settings;
 import EditorContext;
+import TextureManager;
+import Transform;
 
 //#include <Signal/Signal.h>
 //#include <GameState/GameState.h>
@@ -28,9 +30,13 @@ using namespace Umi;
 
 Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
-	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), registry, editorContext)
+	//imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics().GetGraphicsContext()),
+	textureManager(window.GetGraphics().GetGraphicsContext())
 {
-	window.SetResolution(1200, 720);
+	auto e = registry.CreateEntity();
+	auto textureid = textureManager.LoadTexture("Assets/Textures/MainMenu/TitleScreenBG.png");
+	registry.AddComponent<Texture>(e, { textureid });
+	registry.AddComponent<Transform>(e, Transform());
 }
 
 void Editor::Run()
@@ -124,7 +130,7 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 
 	window.GetGraphics().FrameStart();
 	window.GetGraphics().Render();
-	imGuiManager.Render();
+	//imGuiManager.Render();
 	window.GetGraphics().FrameEnd();
 	//window.GetGraphics().Clear();
 	//Render(alpha);

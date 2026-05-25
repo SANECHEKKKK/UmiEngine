@@ -59,7 +59,7 @@ Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineCont
 	//	SetWindowPos(hWnd, HWND_TOP, 0, 0, bufferResolution.width, bufferResolution.height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
 	//}
 
-	graphics = std::make_unique<GraphicsManager>(hWnd);
+	graphics = std::make_unique<GraphicsManager>(hWnd, engineContext);
 
 	//if (graphics->DirectXGetSwapChain())
 	//{
@@ -104,8 +104,8 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	//engineContext.inputManager.UpdateRawInput(msg, wParam, lParam);
 
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-		return true;
+	//if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+		//return true;
 
 	switch (msg) {
 	case WM_SIZE:

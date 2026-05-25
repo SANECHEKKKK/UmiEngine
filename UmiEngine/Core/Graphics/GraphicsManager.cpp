@@ -1,7 +1,11 @@
 ﻿module;
 #include <windows.h>
-#include <dxgi1_6.h>
+#include <string>
 #include <vector>
+#include <algorithm>
+#include <dxgi1_6.h>
+#include <d3dcompiler.h>
+#include <stdexcept>
 
 #include <Graphics/d3dx12.h>
 
@@ -15,7 +19,12 @@ module GraphicsManager;
 using Microsoft::WRL::ComPtr;
 using namespace Umi;
 
-void GraphicsManager::DebugOutputFormatString(const char* format, ...) 
+import Registry;
+import Texture;
+import Transform;
+import Error;
+
+void GraphicsManager::DebugOutputFormatString(const char* format, ...)
 {
 #ifdef _DEBUG
 	va_list valist;
@@ -38,35 +47,6 @@ void GraphicsManager::EnableDebugLayer()
 #endif // _DEBUG
 }
 
-//void GraphicsManager::CreateImgGuiResources()
-//{
-//	constexpr uint32_t SRV_HEAP_SIZE = 64;
-//
-//	D3D12_DESCRIPTOR_HEAP_DESC heapDesc{};
-//	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-//	heapDesc.NumDescriptors = SRV_HEAP_SIZE;
-//	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-//	device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_srvHeap));
-//
-//	m_srvAllocator.Init(device, m_srvHeap.Get(), SRV_HEAP_SIZE);
-//
-//	// Init ImGui
-//	ImGui_ImplDX12_InitInfo initInfo{};
-//	initInfo.Device = device;
-//	initInfo.CommandQueue = commandQueue;
-//	initInfo.NumFramesInFlight = NUM_FRAMES_IN_FLIGHT;
-//	initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-//	initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN; // or your depth format
-//	initInfo.SrvDescriptorHeap = m_srvHeap.Get();
-//	initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* cpu, D3D12_GPU_DESCRIPTOR_HANDLE* gpu) {
-//		g_srvAllocator.Alloc(cpu, gpu);
-//		};
-//	initInfo.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
-//		g_srvAllocator.Free(cpu, gpu);
-//		};
-//
-//}
-
 void GraphicsManager::CreateRenderTargetViews()
 {
 	D3D12_RENDER_TARGET_BLEND_DESC renderTargetBlendDesc = {};
@@ -74,6 +54,248 @@ void GraphicsManager::CreateRenderTargetViews()
 	renderTargetBlendDesc.LogicOpEnable = false;
 	renderTargetBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 	pipelineStateDesc.BlendState.RenderTarget[0] = renderTargetBlendDesc;
+}
+
+void GraphicsManager::Create2DVertexBuffer()
+{
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(vertices2D));
+
+
+	auto result = device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&vertexBuffer2D)
+	);
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create vertex buffer.");
+	}
+
+	Vertex2D* vertMap = nullptr;
+	result = vertexBuffer2D->Map(0, nullptr, (void**)&vertMap);
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to map vertex buffer.");
+	}
+
+	std::copy(std::begin(vertices2D), std::end(vertices2D), vertMap);
+
+	vertexBuffer2D->Unmap(0, nullptr);
+
+	vertexBufferView2D.BufferLocation = vertexBuffer2D->GetGPUVirtualAddress();
+	vertexBufferView2D.SizeInBytes = sizeof(Vertex2D) * std::size(vertices2D);
+	vertexBufferView2D.StrideInBytes = sizeof(Vertex2D);
+}
+
+void GraphicsManager::Create2DIndexBuffer()
+{
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(indices));
+
+	auto result = device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&indexBuffer2D)
+	);
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create index buffer.");
+	}
+
+	unsigned short* mappedIdx = nullptr;
+
+	indexBuffer2D->Map(0, nullptr, (void**)&mappedIdx);
+	std::copy(std::begin(indices), std::end(indices), mappedIdx);
+	indexBuffer2D->Unmap(0, nullptr);
+
+	indexBufferView2D.BufferLocation = indexBuffer2D->GetGPUVirtualAddress();
+	indexBufferView2D.Format = DXGI_FORMAT_R16_UINT;
+	indexBufferView2D.SizeInBytes = sizeof(indices);
+}
+
+void GraphicsManager::Load2DShaders()
+{
+	ID3DBlob* errorBlob = nullptr;
+
+	auto result = D3DCompileFromFile(
+		L"2DBasicVertexShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicVS",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&vertexShaderBlob2D,
+		&errorBlob
+	);
+
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			Error::FatalError("Shader file not found.");
+		}
+		else
+		{
+			std::string errorMessage;
+			errorMessage.resize(errorBlob->GetBufferSize());
+			std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
+			errorMessage += "\n";
+			Error::FatalError(errorMessage);
+		}
+	}
+
+	result = D3DCompileFromFile(
+		L"2DBasicPixelShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicPS",
+		"ps_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&pixelShaderBlob2D,
+		&errorBlob
+	);
+
+	if (result != S_OK)
+	{
+		std::string errorMessage;
+		errorMessage.resize(errorBlob->GetBufferSize());
+		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
+		Error::FatalError("Failed to compile pixel shader." + errorMessage);
+	}
+}
+
+void GraphicsManager::Create2DPipelineState()
+{
+	Create2DVertexBuffer();
+	Create2DIndexBuffer();
+	Load2DShaders();
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+	{
+		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	},
+	{
+		"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	}
+	};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeline = {};
+	gpipeline.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob2D.Get());
+	gpipeline.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob2D.Get());
+
+	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;//中身は0xffffffff
+
+	gpipeline.BlendState.AlphaToCoverageEnable = false;
+	gpipeline.BlendState.IndependentBlendEnable = false;
+
+	D3D12_RENDER_TARGET_BLEND_DESC renderTargetBlendDesc = {};
+
+	//ひとまず加算や乗算やαブレンディングは使用しない
+	renderTargetBlendDesc.BlendEnable = false;
+	renderTargetBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	//ひとまず論理演算は使用しない
+	renderTargetBlendDesc.LogicOpEnable = false;
+
+	gpipeline.BlendState.RenderTarget[0] = renderTargetBlendDesc;
+
+	gpipeline.RasterizerState.MultisampleEnable = false;//まだアンチェリは使わない
+	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;//カリングしない
+	gpipeline.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;//中身を塗りつぶす
+	gpipeline.RasterizerState.DepthClipEnable = true;//深度方向のクリッピングは有効に
+
+	//残り
+	gpipeline.RasterizerState.FrontCounterClockwise = false;
+	gpipeline.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	gpipeline.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	gpipeline.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+	gpipeline.RasterizerState.AntialiasedLineEnable = false;
+	gpipeline.RasterizerState.ForcedSampleCount = 0;
+	gpipeline.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+
+	gpipeline.DepthStencilState.DepthEnable = true;
+	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	gpipeline.DepthStencilState.StencilEnable = false;
+
+	gpipeline.InputLayout.pInputElementDescs = inputLayout;//レイアウト先頭アドレス
+	gpipeline.InputLayout.NumElements = _countof(inputLayout);//レイアウト配列数
+
+	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;//ストリップ時のカットなし
+	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;//三角形で構成
+
+	gpipeline.NumRenderTargets = 1;//今は１つのみ
+	gpipeline.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;//0～1に正規化されたRGBA
+
+	gpipeline.SampleDesc.Count = 1;//サンプリングは1ピクセルにつき１
+	gpipeline.SampleDesc.Quality = 0;//クオリティは最低
+
+	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	D3D12_DESCRIPTOR_RANGE descTblRange = {};
+	descTblRange.NumDescriptors = 1;//テクスチャひとつ
+	descTblRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;//種別はテクスチャ
+	descTblRange.BaseShaderRegister = 0;//0番スロットから
+	descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+
+	D3D12_ROOT_PARAMETER rootparam = {};
+	rootparam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootparam.DescriptorTable.pDescriptorRanges = &descTblRange;//デスクリプタレンジのアドレス
+	rootparam.DescriptorTable.NumDescriptorRanges = 1;//デスクリプタレンジ数
+	rootparam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダから見える
+
+	rootSignatureDesc.pParameters = &rootparam;//ルートパラメータの先頭アドレス
+	rootSignatureDesc.NumParameters = 1;//ルートパラメータ数
+
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//横繰り返し
+	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//縦繰り返し
+	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//奥行繰り返し
+	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;//ボーダーの時は黒
+	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;//補間しない(ニアレストネイバー)
+	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;//ミップマップ最大値
+	samplerDesc.MinLOD = 0.0f;//ミップマップ最小値
+	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//オーバーサンプリングの際リサンプリングしない？
+	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダからのみ可視
+
+	rootSignatureDesc.pStaticSamplers = &samplerDesc;
+	rootSignatureDesc.NumStaticSamplers = 1;
+
+	ID3DBlob* errorBlob = nullptr;
+
+	ID3DBlob* rootSigBlob2D = nullptr;
+	auto result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rootSigBlob2D, &errorBlob);
+	if (result != S_OK)
+	{
+		std::string errorMessage;
+		errorMessage.resize(errorBlob->GetBufferSize());
+		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
+		throw "Failed to Serializer 2D Root Signature." + errorMessage;
+	}
+
+	result = device->CreateRootSignature(0, rootSigBlob2D->GetBufferPointer(), rootSigBlob2D->GetBufferSize(), IID_PPV_ARGS(&rootsignature2D));
+	if (result != S_OK)
+	{
+		throw "Failed to create 2D root signature.";
+	}
+	rootSigBlob2D->Release();
+
+	gpipeline.pRootSignature = rootsignature2D.Get();
+	result = device->CreateGraphicsPipelineState(&gpipeline, IID_PPV_ARGS(&pipelinestate2D));
 }
 
 void GraphicsManager::CreateDepthStencilView()
@@ -236,11 +458,6 @@ ImguiInitInfo* GraphicsManager::GetImguiInitInfo()
 
 void GraphicsManager::FrameStart()
 {
-
-}
-
-void GraphicsManager::Render()
-{
 	bbIdx = swapChain->GetCurrentBackBufferIndex();
 
 	D3D12_RESOURCE_BARRIER BarrierDesc = {};
@@ -262,9 +479,37 @@ void GraphicsManager::Render()
 	commandList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
 
-	ID3D12DescriptorHeap* heaps[] = { imguiSRVDescriptorHeap.Get() };
-	commandList->SetDescriptorHeaps(1, heaps);
+	//ID3D12DescriptorHeap* heaps[] = { imguiSRVDescriptorHeap.Get() };
+	//commandList->SetDescriptorHeaps(1, heaps);
+}
 
+void GraphicsManager::Render()
+{
+	commandList->SetPipelineState(pipelinestate2D.Get());
+
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+	
+
+	commandList->IASetVertexBuffers(0, 1, &vertexBufferView2D);
+	commandList->IASetIndexBuffer(&indexBufferView2D);
+	
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	commandList->SetGraphicsRootSignature(rootsignature2D.Get());
+	for (auto e : engineContext.registry.View<Texture, Transform>())
+	{
+		auto texture = engineContext.registry.GetComponent<Texture>(e);
+		auto transform = engineContext.registry.GetComponent<Transform>(e);
+		
+		TextureData texData = engineContext.textureManager.GetTextureData(texture.id);
+		auto& texDescHeap = texData.texDescHeap;
+
+		commandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
+		commandList->SetGraphicsRootDescriptorTable(0, texDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+		commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+	}
 
 }
 
@@ -299,10 +544,11 @@ void GraphicsManager::FrameEnd()
 	commandList->Reset(commandAllocator.Get(), nullptr);//再びコマンドリストをためる準備
 
 	//フリップ
-	swapChain->Present(0, 0);
+	swapChain->Present(1, 0);
 }
 
-GraphicsManager::GraphicsManager(HWND hwnd)
+GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
+	: engineContext(engineContext)
 {
 	//-----------DEVICE-----------
 	for (auto fv : fls)
@@ -433,5 +679,12 @@ GraphicsManager::GraphicsManager(HWND hwnd)
 	CreateScissorRect();
 	CreateSamplerDescriptorHeap();
 	CreateRenderTargetViews();
-	CreatePipelineState();
+	Create2DPipelineState();
+	//CreatePipelineState();
+
+	graphicsContext = GraphicsContext(
+		device.Get(),
+		commandAllocator.Get(),
+		commandList.Get(),
+		commandQueue.Get());
 }

@@ -51,7 +51,7 @@
     <ClCompile Include="src\ImGui\ImGuiManager.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ImGui\ImguiManager.cpp">
+    <ClCompile Include="src\ImGui\ImGuiManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\InspectorWindow\InspectorWindow.ixx">

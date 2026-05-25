@@ -107,13 +107,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;EDITOR_MODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\Editor\GameStates;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\src;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\spekt\Downloads\DirectXTex-main\DirectXTex-main\DirectXTex\Bin\Desktop_2022_Win10\x64\Debug;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>DirectXTex_Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
@@ -129,14 +129,14 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;EDITOR_MODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <AdditionalIncludeDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\Editor\GameStates;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\src;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>DirectXTex_Release.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\spekt\Downloads\DirectXTex-main\DirectXTex-main\DirectXTex\Bin\Desktop_2022_Win10\x64\Release;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -152,7 +152,7 @@
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp" />
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.ixx" />
     <ClCompile Include="src\ID\ID.ixx" />
-    <ClCompile Include="src\ImGui\ImguiManager.cpp" />
+    <ClCompile Include="src\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="src\ImGui\ImGuiManager.ixx" />
     <ClCompile Include="src\ImGui\imgui_impl_dx12.cpp" />
     <ClCompile Include="src\ImGui\imgui_impl_win32.cpp" />

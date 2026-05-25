@@ -4,9 +4,16 @@ module;
 #include <dxgi1_6.h>
 #include <vector>
 #include <numeric>
+#include <DirectXMath.h>
 
 #include <wrl/client.h>
 export module GraphicsManager;
+
+import EngineContext;
+import GraphicsContext;
+import Vertex;
+import Registry;
+import TextureManager;
 
 using Microsoft::WRL::ComPtr;
 
@@ -119,7 +126,48 @@ export namespace Umi
 		ImguiInitInfo initInfo;
 		//-----------------------------------------
 
+#pragma region 2D
+		//--------------2D_VERTICES----------------
+		Vertex2D vertices2D[4] = {
+			{{-0.5f,-0.5f, 0.0f}, {0.0f,1.0f} },//左下
+			{{-0.5f, 0.5f, 0.0f} ,{0.0f,0.0f}},//左上
+			{{ 0.5f,-0.5f, 0.0f} ,{1.0f,1.0f}},//右下
+			{{ 0.5f, 0.5f, 0.0f} ,{1.0f,0.0f}},//右上
+		};
+		//-----------------------------------------
+
+		//--------------2D_INDICES-----------------
+		unsigned short indices[6] = { 0,1,2, 2,1,3 };
+		//-----------------------------------------
+
+		//------------2D_VERTEX_BUFFER--------------
+		ComPtr<ID3D12Resource> vertexBuffer2D = nullptr;
+		D3D12_VERTEX_BUFFER_VIEW vertexBufferView2D = {};
+		//-----------------------------------------
+
+		//------------2D_INDEX_BUFFER---------------
+		ComPtr<ID3D12Resource> indexBuffer2D = nullptr;
+		D3D12_INDEX_BUFFER_VIEW indexBufferView2D = {};
+		//-----------------------------------------
+
+		//---------------2D_SHADERS----------------
+		ComPtr<ID3DBlob> vertexShaderBlob2D = nullptr;
+		ComPtr<ID3DBlob> pixelShaderBlob2D = nullptr;
+		//-----------------------------------------
+
+		//-------------ROOT_SIGNATURE--------------
+		ComPtr<ID3D12RootSignature> rootsignature2D = nullptr;
+		//-----------------------------------------
+
+		//-------------PIPELINE_STATE--------------
+		ComPtr<ID3D12PipelineState> pipelinestate2D = nullptr;
+		//-----------------------------------------
+#pragma endregion 2D
+
 		UINT bbIdx = 0;
+
+		EngineContext& engineContext;
+		GraphicsContext graphicsContext;
 
 		static constexpr int defaultWindowWidth = 1280;
 		static constexpr int defaultWindowHeight = 720;
@@ -136,15 +184,22 @@ export namespace Umi
 		void CreateRenderTargetViews();
 		void CreatePipelineState();
 
+
+		void Create2DVertexBuffer();
+		void Create2DIndexBuffer();
+		void Load2DShaders();
+		void Create2DPipelineState();
+
 	public:
 		ImguiInitInfo* GetImguiInitInfo();
 
 		void FrameStart();
-		void ImguiDescriptorSet();
 		void Render();
 		void FrameEnd();
 
-		GraphicsManager(HWND hwnd);
+		GraphicsContext& GetGraphicsContext() noexcept { return graphicsContext; }
+
+		GraphicsManager(HWND hwnd, EngineContext& engineContext);
 		~GraphicsManager() = default;
 	};
 }

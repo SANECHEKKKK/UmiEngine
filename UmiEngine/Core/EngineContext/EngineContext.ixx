@@ -1,33 +1,18 @@
 export module EngineContext;
 
+import Registry;
 import Settings;
+import TextureManager;
 
 export namespace Umi
 {
 	struct EngineContext
 	{
-		//Registry& registry;
-
+		Registry& registry;
 		Settings& settings;
-		//TextureManager& textureManager;
-		//Renderer& renderer;
-		//PrefabManager& prefabManager;
-		//LoadManager& loadManager;
-		//InputManager& inputManager;
-		//UiSystem& uiSystem;
-		//ModelManager& modelManager;
-		//ErrorManager& errorManager;
+		TextureManager& textureManager;
 	
-		EngineContext(Settings& settings) : settings(settings) {};
-		//	TextureManager& textureManager,
-		//	Renderer& renderer,
-		//	PrefabManager& prefabManager,
-		//	LoadManager& loadManager,
-		//	InputManager& inputManager,
-		//	Registry& registry,
-		//	UiSystem& uiSystem,
-		//	ModelManager& modelManager,
-		//	ErrorManager& errorManager);
+		EngineContext(Registry& registry, Settings& settings, TextureManager& textureManager) : registry(registry), settings(settings), textureManager(textureManager) {};
 		EngineContext(const EngineContext&) = delete;
 		EngineContext& operator=(const EngineContext&) = delete;
 		~EngineContext() = default;

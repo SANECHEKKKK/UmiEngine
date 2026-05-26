@@ -11,6 +11,7 @@ import Settings;
 import EditorContext;
 import TextureManager;
 import Transform;
+import Camera;
 
 //#include <Signal/Signal.h>
 //#include <GameState/GameState.h>
@@ -37,6 +38,11 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
 	auto textureid = textureManager.LoadTexture("Assets/Textures/MainMenu/TitleScreenBG.png");
 	registry.AddComponent<Texture>(e, { textureid });
 	registry.AddComponent<Transform>(e, Transform());
+
+
+	auto a = registry.CreateEntity();
+	registry.AddComponent<Transform>(a, Transform());
+	registry.AddComponent<Camera>(a, Camera());
 }
 
 void Editor::Run()

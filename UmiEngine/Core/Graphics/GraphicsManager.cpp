@@ -6,6 +6,7 @@
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
 #include <stdexcept>
+#include <DirectXMath.h>
 
 #include <Graphics/d3dx12.h>
 
@@ -23,6 +24,7 @@ import Registry;
 import Texture;
 import Transform;
 import Error;
+import Camera;
 
 void GraphicsManager::DebugOutputFormatString(const char* format, ...)
 {
@@ -56,6 +58,7 @@ void GraphicsManager::CreateRenderTargetViews()
 	pipelineStateDesc.BlendState.RenderTarget[0] = renderTargetBlendDesc;
 }
 
+//--------------------2D--------------------
 void GraphicsManager::Create2DVertexBuffer()
 {
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -175,11 +178,50 @@ void GraphicsManager::Load2DShaders()
 	}
 }
 
+void GraphicsManager::Create2dDescriptorHeap()
+{
+	auto result = descriptorHeap2D.Init(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create 2D descriptor heap.");
+	}
+}
+
+void GraphicsManager::Create2DMatrixContantBuffer()
+{
+
+	auto constBuffHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto constBuffresDesc = CD3DX12_RESOURCE_DESC::Buffer((sizeof(SceneMatrix) + 0xff) & ~0xff);
+
+	auto result = device->CreateCommittedResource(
+		&constBuffHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&constBuffresDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&matrixConstantBuffer2D)
+	);
+
+
+	result = matrixConstantBuffer2D->Map(0, nullptr, (void**)&mapMatrix);
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+	cbvDesc.BufferLocation = matrixConstantBuffer2D->GetGPUVirtualAddress();
+	cbvDesc.SizeInBytes = matrixConstantBuffer2D->GetDesc().Width;
+	device->CreateConstantBufferView(&cbvDesc, descriptorHeap2D[0]);
+
+	descriptorHeap2D.Add();
+}
+
 void GraphicsManager::Create2DPipelineState()
 {
 	Create2DVertexBuffer();
 	Create2DIndexBuffer();
 	Load2DShaders();
+	Create2dDescriptorHeap();
+	Create2DMatrixContantBuffer();
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
 	{
@@ -213,7 +255,7 @@ void GraphicsManager::Create2DPipelineState()
 	gpipeline.RasterizerState.MultisampleEnable = false;//まだアンチェリは使わない
 	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;//カリングしない
 	gpipeline.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;//中身を塗りつぶす
-	gpipeline.RasterizerState.DepthClipEnable = true;//深度方向のクリッピングは有効に
+	gpipeline.RasterizerState.DepthClipEnable = false;//深度方向のクリッピングは有効に
 
 	//残り
 	gpipeline.RasterizerState.FrontCounterClockwise = false;
@@ -239,27 +281,11 @@ void GraphicsManager::Create2DPipelineState()
 	gpipeline.NumRenderTargets = 1;//今は１つのみ
 	gpipeline.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;//0～1に正規化されたRGBA
 
+
+
+	//--------------------SAMPLER--------------------
 	gpipeline.SampleDesc.Count = 1;//サンプリングは1ピクセルにつき１
 	gpipeline.SampleDesc.Quality = 0;//クオリティは最低
-
-	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-	D3D12_DESCRIPTOR_RANGE descTblRange = {};
-	descTblRange.NumDescriptors = 1;//テクスチャひとつ
-	descTblRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;//種別はテクスチャ
-	descTblRange.BaseShaderRegister = 0;//0番スロットから
-	descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-
-	D3D12_ROOT_PARAMETER rootparam = {};
-	rootparam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootparam.DescriptorTable.pDescriptorRanges = &descTblRange;//デスクリプタレンジのアドレス
-	rootparam.DescriptorTable.NumDescriptorRanges = 1;//デスクリプタレンジ数
-	rootparam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダから見える
-
-	rootSignatureDesc.pParameters = &rootparam;//ルートパラメータの先頭アドレス
-	rootSignatureDesc.NumParameters = 1;//ルートパラメータ数
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//横繰り返し
@@ -271,7 +297,43 @@ void GraphicsManager::Create2DPipelineState()
 	samplerDesc.MinLOD = 0.0f;//ミップマップ最小値
 	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//オーバーサンプリングの際リサンプリングしない？
 	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダからのみ可視
+	//-----------------------------------------------
 
+
+
+	//-----------------DESCRIPTOR_TABLE--------------
+	D3D12_DESCRIPTOR_RANGE descTblRange[2] = {};
+	descTblRange[0].NumDescriptors = 1;//テクスチャひとつ
+	descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;//種別はテクスチャ
+	descTblRange[0].BaseShaderRegister = 0;//0番スロットから
+	descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+	descTblRange[1].NumDescriptors = 1;//テクスチャひとつ
+	descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;//種別はテクスチャ
+	descTblRange[1].BaseShaderRegister = 0;//0番スロットから
+	descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	//-----------------------------------------------
+
+	//-----------------ROOT_PARAMETER----------------
+	D3D12_ROOT_PARAMETER rootparam[2] = {};
+	rootparam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootparam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];//デスクリプタレンジのアドレス
+	rootparam[0].DescriptorTable.NumDescriptorRanges = 1;//デスクリプタレンジ数
+	rootparam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//頂点シェーダから見える
+
+	rootparam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootparam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];//デスクリプタレンジのアドレス
+	rootparam[1].DescriptorTable.NumDescriptorRanges = 1;//デスクリプタレンジ数
+	rootparam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダから見える
+	//-----------------------------------------------
+
+
+
+	//-----------------ROOT_SIGNATURE----------------
+	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rootSignatureDesc.pParameters = rootparam;//ルートパラメータの先頭アドレス
+	rootSignatureDesc.NumParameters = 2;//ルートパラメータ数
 	rootSignatureDesc.pStaticSamplers = &samplerDesc;
 	rootSignatureDesc.NumStaticSamplers = 1;
 
@@ -284,19 +346,21 @@ void GraphicsManager::Create2DPipelineState()
 		std::string errorMessage;
 		errorMessage.resize(errorBlob->GetBufferSize());
 		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
-		throw "Failed to Serializer 2D Root Signature." + errorMessage;
+		Error::FatalError("Failed to Serializer 2D Root Signature." + errorMessage);
 	}
 
 	result = device->CreateRootSignature(0, rootSigBlob2D->GetBufferPointer(), rootSigBlob2D->GetBufferSize(), IID_PPV_ARGS(&rootsignature2D));
 	if (result != S_OK)
 	{
-		throw "Failed to create 2D root signature.";
+		Error::FatalError("Failed to create 2D root signature.");
 	}
 	rootSigBlob2D->Release();
+	//-----------------------------------------------
 
 	gpipeline.pRootSignature = rootsignature2D.Get();
 	result = device->CreateGraphicsPipelineState(&gpipeline, IID_PPV_ARGS(&pipelinestate2D));
 }
+//------------------------------------------
 
 void GraphicsManager::CreateDepthStencilView()
 {
@@ -483,31 +547,79 @@ void GraphicsManager::FrameStart()
 	//commandList->SetDescriptorHeaps(1, heaps);
 }
 
+auto angle = 0.0f;
 void GraphicsManager::Render()
 {
+	DirectX::XMMATRIX view, proj;
+	for (auto e : engineContext.registry.View<Camera>())
+	{
+		auto& cam = engineContext.registry.GetComponent<Camera>(e);
+
+		cam.projectionMatrix = DirectX::XMMatrixOrthographicLH(
+			(float)1200,   // width in world units
+			(float)720,  // height in world units
+			0.1f,                 // near
+			100.0f                // far
+		);
+
+		// View for 2D is usually just looking straight down Z
+		DirectX::XMFLOAT3 eye(0, -10, -8);
+		DirectX::XMFLOAT3 target(0, 0, 0);
+		DirectX::XMFLOAT3 up(0, 1, 0);
+		cam.viewMatrix = DirectX::XMMatrixLookAtLH(
+			DirectX::XMLoadFloat3(&eye),
+			DirectX::XMLoadFloat3(&target),
+			DirectX::XMLoadFloat3(&up)
+		);
+
+
+		view = cam.viewMatrix;
+		proj = cam.projectionMatrix;
+		break;
+	}
+
 	commandList->SetPipelineState(pipelinestate2D.Get());
 
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissorRect);
-	
+
 
 	commandList->IASetVertexBuffers(0, 1, &vertexBufferView2D);
 	commandList->IASetIndexBuffer(&indexBufferView2D);
-	
+
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	commandList->SetGraphicsRootSignature(rootsignature2D.Get());
+
+	auto* heap = descriptorHeap2D.Get();
+	auto cbvHandle = descriptorHeap2D.GetGPU(0);
+
+	commandList->SetDescriptorHeaps(1, &heap);
+	commandList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+
+
 	for (auto e : engineContext.registry.View<Texture, Transform>())
 	{
-		auto texture = engineContext.registry.GetComponent<Texture>(e);
-		auto transform = engineContext.registry.GetComponent<Transform>(e);
-		
-		TextureData texData = engineContext.textureManager.GetTextureData(texture.id);
-		auto& texDescHeap = texData.texDescHeap;
+		auto& texture = engineContext.registry.GetComponent<Texture>(e);
+		auto& transform = engineContext.registry.GetComponent<Transform>(e);
 
-		commandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
-		commandList->SetGraphicsRootDescriptorTable(0, texDescHeap->GetGPUDescriptorHandleForHeapStart());
+		transform.scale.x = 1200.0f;
+		transform.scale.y = 720.0f;
 
+		//transform.pos.z = 600.0f;
+
+		DirectX::XMMATRIX world =
+			DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, 1.0f) *
+			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
+			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
+
+		SceneMatrix matrices{ world, view, proj };
+		memcpy(mapMatrix, &matrices, sizeof(SceneMatrix));
+
+		auto& texData = engineContext.textureManager.GetTextureData(texture.id);
+		auto texHandle = descriptorHeap2D.GetGPU(texData.descriptorHeapIndex);
+
+		commandList->SetGraphicsRootDescriptorTable(1, texHandle);
 		commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 	}
 
@@ -575,7 +687,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	if (device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
 		IID_PPV_ARGS(&commandAllocator)) != S_OK)
 	{
-		throw "Failed to create command allocator.";
+		Error::FatalError("Failed to create command allocator.");
 	}
 	//---------------------------------------
 
@@ -586,7 +698,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 		nullptr,
 		IID_PPV_ARGS(&commandList)) != S_OK)
 	{
-		throw "Failed to create command list.";
+		Error::FatalError("Failed to create command list.");
 	}
 	//----------------------------------
 
@@ -602,7 +714,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 		&commandQueueDesc,
 		IID_PPV_ARGS(&commandQueue)) != S_OK)
 	{
-		throw "Failed to create command queue.";
+		Error::FatalError("Failed to create command queue.");
 	}
 	//-----------------------------------
 
@@ -632,7 +744,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 		nullptr,
 		(IDXGISwapChain1**)swapChain.GetAddressOf()) != S_OK)
 	{
-		throw "Failed to create swap chain.";
+		Error::FatalError("Failed to create swap chain.");
 	}
 	//-----------------------------------
 
@@ -646,7 +758,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 
 	if (device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap)) != S_OK)
 	{
-		throw "Failed to create descriptor heap.";
+		Error::FatalError("Failed to create descriptor heap.");
 	}
 	//-----------------------------------------
 
@@ -661,7 +773,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	{
 		if (swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])) != S_OK)
 		{
-			throw "Failed to get back buffer.";
+			Error::FatalError("Failed to get back buffer.");
 		}
 		device->CreateRenderTargetView(backBuffers[i].Get(), nullptr, rtvHandle);
 		rtvHandle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -671,7 +783,7 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 
 	if (device->CreateFence(_fenceVal, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)) != S_OK)
 	{
-		throw "Failed to create fence.";
+		Error::FatalError("Failed to create fence.");
 	}
 
 	CreateDepthStencilView();
@@ -679,12 +791,15 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	CreateScissorRect();
 	CreateSamplerDescriptorHeap();
 	CreateRenderTargetViews();
-	Create2DPipelineState();
-	//CreatePipelineState();
 
-	graphicsContext = GraphicsContext(
-		device.Get(),
-		commandAllocator.Get(),
-		commandList.Get(),
-		commandQueue.Get());
+	//------------------2D------------------
+	Create2DPipelineState();
+	//--------------------------------------
+
+	graphicsContext.device = device.Get();
+	graphicsContext.commandAllocator = commandAllocator.Get();
+	graphicsContext.commandList = commandList.Get();
+	graphicsContext.commandQueue = commandQueue.Get();
+	graphicsContext.descriptorHeap2D = descriptorHeap2D;
+
 }

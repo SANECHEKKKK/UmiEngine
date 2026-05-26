@@ -14,11 +14,21 @@ import GraphicsContext;
 import Vertex;
 import Registry;
 import TextureManager;
+import DescriptorHeap;
 
 using Microsoft::WRL::ComPtr;
 
 export namespace Umi
 {
+	struct SceneMatrix
+	{
+		DirectX::XMMATRIX world;
+		DirectX::XMMATRIX view;
+		DirectX::XMMATRIX proj;
+		//DirectX::XMFLOAT3 eye;
+	};
+
+
 	struct DescriptorHeapAllocator {
 		ID3D12DescriptorHeap* heap = nullptr;
 		D3D12_DESCRIPTOR_HEAP_TYPE  type{};
@@ -162,14 +172,25 @@ export namespace Umi
 		//-------------PIPELINE_STATE--------------
 		ComPtr<ID3D12PipelineState> pipelinestate2D = nullptr;
 		//-----------------------------------------
+
+		//-----------2D_DESCRIPTOR_HEAP------------
+		DescriptorHeap descriptorHeap2D;
+		//-----------------------------------------
+
+		//--------2D_MATRIX_CONSTANT_BUFFER--------
+		ComPtr<ID3D12Resource> matrixConstantBuffer2D;
+		SceneMatrix* mapMatrix = nullptr;
+		//-----------------------------------------
+
+		unsigned int MAX_TEXTURES = 128;
 #pragma endregion 2D
 
 		UINT bbIdx = 0;
 
 		EngineContext& engineContext;
-		GraphicsContext graphicsContext;
+		GraphicsContext graphicsContext { descriptorHeap2D };
 
-		static constexpr int defaultWindowWidth = 1280;
+		static constexpr int defaultWindowWidth = 1200;
 		static constexpr int defaultWindowHeight = 720;
 
 		void DebugOutputFormatString(const char* format, ...);
@@ -184,11 +205,15 @@ export namespace Umi
 		void CreateRenderTargetViews();
 		void CreatePipelineState();
 
-
+		//----------------2D----------------
 		void Create2DVertexBuffer();
 		void Create2DIndexBuffer();
 		void Load2DShaders();
+		void Create2dDescriptorHeap();
+		void Create2DMatrixContantBuffer();
 		void Create2DPipelineState();
+		//----------------------------------
+
 
 	public:
 		ImguiInitInfo* GetImguiInitInfo();

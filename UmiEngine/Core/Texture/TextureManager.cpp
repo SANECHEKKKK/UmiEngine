@@ -125,9 +125,6 @@ Umi::TextureID Umi::TextureManager::LoadTexture(std::string_view filePath)
 	UINT64 fenceValue = 0;
 	result = graphicsContext.device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
-	//_cmdAllocator->Reset();//キューをクリア
-	//commandList->Reset(_cmdAllocator, nullptr);
-
 	graphicsContext.commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
 	D3D12_RESOURCE_BARRIER BarrierDesc = {};
@@ -156,12 +153,8 @@ Umi::TextureID Umi::TextureManager::LoadTexture(std::string_view filePath)
 	graphicsContext.commandAllocator->Reset();//キューをクリア
 	graphicsContext.commandList->Reset(graphicsContext.commandAllocator, nullptr);
 
-	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = {};
-	descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;//シェーダから見えるように
-	descHeapDesc.NodeMask = 0;//マスクは0
-	descHeapDesc.NumDescriptors = 1;//ビューは今のところ１つだけ
-	descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;//シェーダリソースビュー(および定数、UAVも)
-	result = graphicsContext.device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&textureData.texDescHeap));//生成
+	//--------------------------------------------------
+	textureData.descriptorHeapIndex = graphicsContext.descriptorHeap2D.Add();
 
 	//通常テクスチャビュー作成
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -172,8 +165,9 @@ Umi::TextureID Umi::TextureManager::LoadTexture(std::string_view filePath)
 
 	graphicsContext.device->CreateShaderResourceView(textureData.texBuff.Get(), //ビューと関連付けるバッファ
 		&srvDesc, //先ほど設定したテクスチャ設定情報
-		textureData.texDescHeap->GetCPUDescriptorHandleForHeapStart()//ヒープのどこに割り当てるか
+		graphicsContext.descriptorHeap2D.GetCPU( textureData.descriptorHeapIndex )//ヒープのどこに割り当てるか
 	);
+	//--------------------------------------------------
 
 
 	textureList.push_back(textureData);

@@ -16,9 +16,9 @@ export namespace Umi
 {
 	struct TextureData
 	{
-		ComPtr<ID3D12DescriptorHeap> texDescHeap = nullptr;
 		ComPtr<ID3D12Resource> texBuff = nullptr;
 		std::string filePath;
+		UINT descriptorHeapIndex = 0;
 	};
 
 	class TextureManager

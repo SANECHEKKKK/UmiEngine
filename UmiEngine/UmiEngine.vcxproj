@@ -23,6 +23,7 @@
     <ClCompile Include="Core\EngineContext\EngineContext.ixx" />
     <ClCompile Include="Core\Entity\Entity.ixx" />
     <ClCompile Include="Core\Error\Error.ixx" />
+    <ClCompile Include="Core\Graphics\DescriptorHeap.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsContext.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsManager.cpp" />
     <ClCompile Include="Core\Graphics\RenderManager.cpp" />
@@ -33,6 +34,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Core\Input\Keyboard.cpp" />
+    <ClCompile Include="Core\Input\Keyboard.ixx" />
     <ClCompile Include="Core\Input\Mouse.cpp" />
     <ClCompile Include="Core\Math\Vector.ixx" />
     <ClCompile Include="Core\Model\Model.ixx" />

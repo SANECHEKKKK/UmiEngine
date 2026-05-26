@@ -105,6 +105,12 @@
     <ClCompile Include="Core\Camera\Camera.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Input\Keyboard.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Graphics\DescriptorHeap.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Input\InputComponent.h">

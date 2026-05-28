@@ -19,6 +19,7 @@ export namespace Umi
 		ComPtr<ID3D12Resource> texBuff = nullptr;
 		std::string filePath;
 		UINT descriptorHeapIndex = 0;
+		float width, height;
 	};
 
 	class TextureManager
@@ -29,7 +30,7 @@ export namespace Umi
 		std::vector<TextureData> textureList;
 
 	public:
-		TextureID LoadTexture(std::string_view filePath);
+		[[nodiscard]] TextureID LoadTexture(std::string_view filePath);
 		void UnloadTexture(TextureID id);
 		TextureData& GetTextureData(TextureID id);
 

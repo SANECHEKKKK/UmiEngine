@@ -1,11 +1,10 @@
-#include "BasicShaderHeader.hlsli"
+#include "3DBasicShaderHeader.hlsli"
 
 Output BasicVS(
-float4 pos : POSITION, 
-float4 normal : NORMAL, 
-float2 uv : TEXCOORD,
-float2 boneno : BONE_NO,
-float2 weight : WEIGHT)
+float4 pos : POSITION,
+float4 normal : NORMAL,
+float2 uv : TEXCOORD)
+
 {
     Output output; //ピクセルシェーダへ渡す値
     pos = mul(world, pos);

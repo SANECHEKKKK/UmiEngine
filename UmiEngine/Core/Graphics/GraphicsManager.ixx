@@ -28,7 +28,6 @@ export namespace Umi
 		//DirectX::XMFLOAT3 eye;
 	};
 
-
 	struct DescriptorHeapAllocator {
 		ID3D12DescriptorHeap* heap = nullptr;
 		D3D12_DESCRIPTOR_HEAP_TYPE  type{};
@@ -77,7 +76,7 @@ export namespace Umi
 		ComPtr<ID3D12Device> device = nullptr;
 		ComPtr<IDXGIFactory6> factory = nullptr;
 
-		//-----------FEATURE_LEVEL-----------
+		//--------------FEATURE_LEVEL--------------
 		const D3D_FEATURE_LEVEL fls[4] =
 		{
 			D3D_FEATURE_LEVEL_12_1,
@@ -86,18 +85,18 @@ export namespace Umi
 			D3D_FEATURE_LEVEL_11_0,
 		};
 		D3D_FEATURE_LEVEL featureLevel;
-		//-----------------------------------
+		//-----------------------------------------
 
-		//-----------COMMAND_LIST------------
+		//--------------COMMAND_LIST---------------
 		ComPtr<ID3D12CommandAllocator> commandAllocator = nullptr;
 		ComPtr<ID3D12GraphicsCommandList> commandList = nullptr;
 		ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
-		//-----------------------------------
+		//-----------------------------------------
 
-		//-------------SWAP_CHAIN-------------
+		//---------------SWAP_CHAIN----------------
 		ComPtr<IDXGISwapChain4> swapChain = nullptr;
 		std::vector<ComPtr<ID3D12Resource>> backBuffers;
-		//-----------------------------------
+		//-----------------------------------------
 
 		//-------------DESCRIPTOR_HEAP-------------
 		ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap = nullptr;
@@ -108,21 +107,12 @@ export namespace Umi
 		ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap = nullptr;
 		//-----------------------------------------
 
-		//----------------PIPELINE_STATE-----------
-		ComPtr<ID3D12PipelineState> pipelineState = nullptr;
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc = {};
-		//-----------------------------------------
-
 		//----------------VIEWPORT-----------------
 		D3D12_VIEWPORT viewport = {};
 		//-----------------------------------------
 
 		//----------------SCISSOR_RECT-------------
 		D3D12_RECT scissorRect = {};
-		//-----------------------------------------
-
-		//----------------DEBUG_LAYER--------------
-		ComPtr<ID3D12Debug> debugLayer = nullptr;
 		//-----------------------------------------
 
 		//------------------FENCE------------------
@@ -179,11 +169,33 @@ export namespace Umi
 
 		//--------2D_MATRIX_CONSTANT_BUFFER--------
 		ComPtr<ID3D12Resource> matrixConstantBuffer2D;
-		SceneMatrix* mapMatrix = nullptr;
+		SceneMatrix* mapMatrix2D = nullptr;
+		//-----------------------------------------
+#pragma endregion 2D
+
+#pragma region 3D
+		//---------------3D_SHADERS----------------
+		ComPtr<ID3DBlob> vertexShaderBlob3D = nullptr;
+		ComPtr<ID3DBlob> pixelShaderBlob3D = nullptr;
 		//-----------------------------------------
 
-		unsigned int MAX_TEXTURES = 128;
-#pragma endregion 2D
+		//-------------ROOT_SIGNATURE--------------
+		ComPtr<ID3D12RootSignature> rootsignature3D = nullptr;
+		//-----------------------------------------
+
+		//-------------PIPELINE_STATE--------------
+		ComPtr<ID3D12PipelineState> pipelinestate3D = nullptr;
+		//-----------------------------------------
+
+		//-----------3D_DESCRIPTOR_HEAP------------
+		DescriptorHeap descriptorHeap3D;
+		//-----------------------------------------
+
+		//--------3D_MATRIX_CONSTANT_BUFFER--------
+		ComPtr<ID3D12Resource> matrixConstantBuffer3D;
+		SceneMatrix* mapMatrix3D = nullptr;
+		//-----------------------------------------
+#pragma endregion 3D
 
 		UINT bbIdx = 0;
 
@@ -202,7 +214,6 @@ export namespace Umi
 		void CreateViewPort();
 		void CreateScissorRect();
 		void CreateSamplerDescriptorHeap();
-		void CreateRenderTargetViews();
 		void CreatePipelineState();
 
 		//----------------2D----------------
@@ -213,7 +224,19 @@ export namespace Umi
 		void Create2DMatrixContantBuffer();
 		void Create2DPipelineState();
 		//----------------------------------
+		
+		//----------------3D----------------
+		void Load3DShaders();
+		void Create3DDescriptorHeap();
+		void Create3DMatrixContantBuffer();
+		void Create3DPipelineState();
+		//----------------------------------
 
+
+		void Render2D();
+		void Render3D();
+
+		void FlushGPU();
 
 	public:
 		ImguiInitInfo* GetImguiInitInfo();
@@ -225,6 +248,6 @@ export namespace Umi
 		GraphicsContext& GetGraphicsContext() noexcept { return graphicsContext; }
 
 		GraphicsManager(HWND hwnd, EngineContext& engineContext);
-		~GraphicsManager() = default;
+		~GraphicsManager();
 	};
 }

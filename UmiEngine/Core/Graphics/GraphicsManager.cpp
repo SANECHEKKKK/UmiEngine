@@ -21,9 +21,11 @@ using Microsoft::WRL::ComPtr;
 using namespace Umi;
 
 import Registry;
-import Texture;
-import Transform;
 import Error;
+
+import Texture;
+import Model;
+import Transform;
 import Camera;
 
 void GraphicsManager::DebugOutputFormatString(const char* format, ...)
@@ -39,23 +41,14 @@ void GraphicsManager::DebugOutputFormatString(const char* format, ...)
 void GraphicsManager::EnableDebugLayer()
 {
 #ifdef _DEBUG
+	ComPtr<ID3D12Debug> debugLayer = nullptr;
 	auto result = D3D12GetDebugInterface(IID_PPV_ARGS(&debugLayer));
 
 	if (result == S_OK)
 	{
 		debugLayer->EnableDebugLayer();
-		debugLayer->Release();
 	}
 #endif // _DEBUG
-}
-
-void GraphicsManager::CreateRenderTargetViews()
-{
-	D3D12_RENDER_TARGET_BLEND_DESC renderTargetBlendDesc = {};
-	renderTargetBlendDesc.BlendEnable = false;
-	renderTargetBlendDesc.LogicOpEnable = false;
-	renderTargetBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	pipelineStateDesc.BlendState.RenderTarget[0] = renderTargetBlendDesc;
 }
 
 //--------------------2D--------------------
@@ -145,7 +138,7 @@ void GraphicsManager::Load2DShaders()
 	{
 		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 		{
-			Error::FatalError("Shader file not found.");
+			Error::FatalError("3DShader file not found.");
 		}
 		else
 		{
@@ -174,7 +167,7 @@ void GraphicsManager::Load2DShaders()
 		std::string errorMessage;
 		errorMessage.resize(errorBlob->GetBufferSize());
 		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
-		Error::FatalError("Failed to compile pixel shader." + errorMessage);
+		Error::FatalError("Failed to compile 2Dpixel shader." + errorMessage);
 	}
 }
 
@@ -205,7 +198,7 @@ void GraphicsManager::Create2DMatrixContantBuffer()
 	);
 
 
-	result = matrixConstantBuffer2D->Map(0, nullptr, (void**)&mapMatrix);
+	result = matrixConstantBuffer2D->Map(0, nullptr, (void**)&mapMatrix2D);
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 	cbvDesc.BufferLocation = matrixConstantBuffer2D->GetGPUVirtualAddress();
@@ -267,7 +260,7 @@ void GraphicsManager::Create2DPipelineState()
 	gpipeline.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
 
-	gpipeline.DepthStencilState.DepthEnable = true;
+	gpipeline.DepthStencilState.DepthEnable = false;
 	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 	gpipeline.DepthStencilState.StencilEnable = false;
@@ -362,6 +355,251 @@ void GraphicsManager::Create2DPipelineState()
 }
 //------------------------------------------
 
+//--------------------3D--------------------
+void GraphicsManager::Load3DShaders()
+{
+	ID3DBlob* errorBlob = nullptr;
+
+	auto result = D3DCompileFromFile(
+		L"3DBasicVertexShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicVS",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&vertexShaderBlob3D,
+		&errorBlob
+	);
+
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			Error::FatalError("3DShader file not found.");
+		}
+		else
+		{
+			std::string errorMessage;
+			errorMessage.resize(errorBlob->GetBufferSize());
+			std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
+			errorMessage += "\n";
+			Error::FatalError(errorMessage);
+		}
+	}
+
+	result = D3DCompileFromFile(
+		L"3DBasicPixelShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicPS",
+		"ps_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&pixelShaderBlob3D,
+		&errorBlob
+	);
+
+	if (result != S_OK)
+	{
+		std::string errorMessage;
+		errorMessage.resize(errorBlob->GetBufferSize());
+		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
+		Error::FatalError("Failed to compile 3Dpixel shader." + errorMessage);
+	}
+}
+
+void GraphicsManager::Create3DDescriptorHeap()
+{
+	auto result = descriptorHeap3D.Init(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create 3D descriptor heap.");
+	}
+}
+
+void GraphicsManager::Create3DMatrixContantBuffer()
+{
+	auto constBuffHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto constBuffresDesc = CD3DX12_RESOURCE_DESC::Buffer((sizeof(SceneMatrix) + 0xff) & ~0xff);
+
+	auto result = device->CreateCommittedResource(
+		&constBuffHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&constBuffresDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&matrixConstantBuffer3D)
+	);
+
+
+	result = matrixConstantBuffer3D->Map(0, nullptr, (void**)&mapMatrix3D);
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+	cbvDesc.BufferLocation = matrixConstantBuffer3D->GetGPUVirtualAddress();
+	cbvDesc.SizeInBytes = matrixConstantBuffer3D->GetDesc().Width;
+	device->CreateConstantBufferView(&cbvDesc, descriptorHeap3D[0]);
+
+	descriptorHeap3D.Add();
+}
+
+void GraphicsManager::Create3DPipelineState()
+{
+	Load3DShaders();
+	Create3DDescriptorHeap();
+	Create3DMatrixContantBuffer();
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+	{
+		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	},
+	{
+		"NORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	},
+	{
+		"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	}
+	};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeline = {};
+	gpipeline.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob3D.Get());
+	gpipeline.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob3D.Get());
+
+	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;//中身は0xffffffff
+
+	gpipeline.BlendState.AlphaToCoverageEnable = false;
+	gpipeline.BlendState.IndependentBlendEnable = false;
+
+	D3D12_RENDER_TARGET_BLEND_DESC renderTargetBlendDesc = {};
+
+	//ひとまず加算や乗算やαブレンディングは使用しない
+	renderTargetBlendDesc.BlendEnable = false;
+	renderTargetBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	//ひとまず論理演算は使用しない
+	renderTargetBlendDesc.LogicOpEnable = false;
+
+	gpipeline.BlendState.RenderTarget[0] = renderTargetBlendDesc;
+
+	gpipeline.RasterizerState.MultisampleEnable = false;//まだアンチェリは使わない
+	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;//カリングしない
+	gpipeline.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;//中身を塗りつぶす
+	gpipeline.RasterizerState.DepthClipEnable = true;//深度方向のクリッピングは有効に
+
+	//残り
+	gpipeline.RasterizerState.FrontCounterClockwise = false;
+	gpipeline.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	gpipeline.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	gpipeline.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+	gpipeline.RasterizerState.AntialiasedLineEnable = false;
+	gpipeline.RasterizerState.ForcedSampleCount = 0;
+	gpipeline.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+
+	gpipeline.DepthStencilState.DepthEnable = true;
+	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	gpipeline.DepthStencilState.StencilEnable = false;
+	gpipeline.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
+
+	gpipeline.InputLayout.pInputElementDescs = inputLayout;//レイアウト先頭アドレス
+	gpipeline.InputLayout.NumElements = _countof(inputLayout);//レイアウト配列数
+
+	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;//ストリップ時のカットなし
+	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;//三角形で構成
+
+	gpipeline.NumRenderTargets = 1;//今は１つのみ
+	gpipeline.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;//0～1に正規化されたRGBA
+
+
+
+	//--------------------SAMPLER--------------------
+	gpipeline.SampleDesc.Count = 1;//サンプリングは1ピクセルにつき１
+	gpipeline.SampleDesc.Quality = 0;//クオリティは最低
+
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//横繰り返し
+	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//縦繰り返し
+	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//奥行繰り返し
+	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;//ボーダーの時は黒
+	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;//補間しない(ニアレストネイバー)
+	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;//ミップマップ最大値
+	samplerDesc.MinLOD = 0.0f;//ミップマップ最小値
+	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//オーバーサンプリングの際リサンプリングしない？
+	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダからのみ可視
+	//-----------------------------------------------
+
+
+
+	//-----------------DESCRIPTOR_TABLE--------------
+	D3D12_DESCRIPTOR_RANGE descTblRange = {};
+	descTblRange.NumDescriptors = 1;//テクスチャひとつ
+	descTblRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;//種別はテクスチャ
+	descTblRange.BaseShaderRegister = 0;//0番スロットから
+	descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+	//descTblRange[1].NumDescriptors = 1;//テクスチャひとつ
+	//descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;//種別はテクスチャ
+	//descTblRange[1].BaseShaderRegister = 0;//0番スロットから
+	//descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	//-----------------------------------------------
+
+	//-----------------ROOT_PARAMETER----------------
+	D3D12_ROOT_PARAMETER rootparam = {};
+	rootparam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootparam.DescriptorTable.pDescriptorRanges = &descTblRange;//デスクリプタレンジのアドレス
+	rootparam.DescriptorTable.NumDescriptorRanges = 1;//デスクリプタレンジ数
+	rootparam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//頂点シェーダから見える
+
+	//rootparam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	//rootparam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];//デスクリプタレンジのアドレス
+	//rootparam[1].DescriptorTable.NumDescriptorRanges = 1;//デスクリプタレンジ数
+	//rootparam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダから見える
+	//-----------------------------------------------
+
+
+
+	//-----------------ROOT_SIGNATURE----------------
+	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rootSignatureDesc.pParameters = &rootparam;//ルートパラメータの先頭アドレス
+	rootSignatureDesc.NumParameters = 1;//ルートパラメータ数
+	rootSignatureDesc.pStaticSamplers = &samplerDesc;
+	rootSignatureDesc.NumStaticSamplers = 1;
+
+	ID3DBlob* errorBlob = nullptr;
+
+	ID3DBlob* rootSigBlob3D = nullptr;
+	auto result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rootSigBlob3D, &errorBlob);
+	if (result != S_OK)
+	{
+		std::string errorMessage;
+		errorMessage.resize(errorBlob->GetBufferSize());
+		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
+		Error::FatalError("Failed to Serializer 3D Root Signature." + errorMessage);
+	}
+
+	result = device->CreateRootSignature(0, rootSigBlob3D->GetBufferPointer(), rootSigBlob3D->GetBufferSize(), IID_PPV_ARGS(&rootsignature3D));
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create 3D root signature.");
+	}
+	rootSigBlob3D->Release();
+	//-----------------------------------------------
+
+	gpipeline.pRootSignature = rootsignature3D.Get();
+	result = device->CreateGraphicsPipelineState(&gpipeline, IID_PPV_ARGS(&pipelinestate3D));
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create 3D pipeline state.");
+	}
+
+}
+//------------------------------------------
+
 void GraphicsManager::CreateDepthStencilView()
 {
 	D3D12_RESOURCE_DESC depthResDesc = {};
@@ -382,7 +620,6 @@ void GraphicsManager::CreateDepthStencilView()
 	depthClearValue.DepthStencil.Depth = 1.0f;
 	depthClearValue.Format = DXGI_FORMAT_D32_FLOAT;
 
-	ID3D12Resource* depthStencilBuffer = nullptr;
 	auto result = device->CreateCommittedResource(
 		&depthHeapProp,
 		D3D12_HEAP_FLAG_NONE,
@@ -392,17 +629,16 @@ void GraphicsManager::CreateDepthStencilView()
 		IID_PPV_ARGS(&depthStencilBuffer));
 	if (result != S_OK)
 	{
-		throw "Failed to create depth buffer.";
+		Error::FatalError("Failed to create depth buffer.");
 	}
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors = 1;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	ID3D12DescriptorHeap* dsvDescriptorHeap = nullptr;
 	result = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap));
 	if (result != S_OK)
 	{
-		throw "Failed to create descriptor heap.";
+		Error::FatalError("Failed to create depth stencil descriptor heap.");
 	}
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
@@ -411,7 +647,7 @@ void GraphicsManager::CreateDepthStencilView()
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 	device->CreateDepthStencilView(
-		depthStencilBuffer,
+		depthStencilBuffer.Get(),
 		&dsvDesc,
 		dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 }
@@ -533,13 +769,17 @@ void GraphicsManager::FrameStart()
 	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	commandList->ResourceBarrier(1, &BarrierDesc);
 
+
 	//レンダーターゲットを指定
 	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	commandList->OMSetRenderTargets(1, &rtvH, false, nullptr);
 
+	auto dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
 	//画面クリア
-	float clearColor[] = { 0.0f,0.0f,0.0f,1.0f };//黒
+	float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };//白
 	commandList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
 
@@ -547,37 +787,9 @@ void GraphicsManager::FrameStart()
 	//commandList->SetDescriptorHeaps(1, heaps);
 }
 
-auto angle = 0.0f;
-void GraphicsManager::Render()
+static DirectX::XMMATRIX view, proj;
+void GraphicsManager::Render2D()
 {
-	DirectX::XMMATRIX view, proj;
-	for (auto e : engineContext.registry.View<Camera>())
-	{
-		auto& cam = engineContext.registry.GetComponent<Camera>(e);
-
-		cam.projectionMatrix = DirectX::XMMatrixOrthographicLH(
-			(float)1200,   // width in world units
-			(float)720,  // height in world units
-			0.1f,                 // near
-			100.0f                // far
-		);
-
-		// View for 2D is usually just looking straight down Z
-		DirectX::XMFLOAT3 eye(0, -10, -8);
-		DirectX::XMFLOAT3 target(0, 0, 0);
-		DirectX::XMFLOAT3 up(0, 1, 0);
-		cam.viewMatrix = DirectX::XMMatrixLookAtLH(
-			DirectX::XMLoadFloat3(&eye),
-			DirectX::XMLoadFloat3(&target),
-			DirectX::XMLoadFloat3(&up)
-		);
-
-
-		view = cam.viewMatrix;
-		proj = cam.projectionMatrix;
-		break;
-	}
-
 	commandList->SetPipelineState(pipelinestate2D.Get());
 
 	commandList->RSSetViewports(1, &viewport);
@@ -603,26 +815,107 @@ void GraphicsManager::Render()
 		auto& texture = engineContext.registry.GetComponent<Texture>(e);
 		auto& transform = engineContext.registry.GetComponent<Transform>(e);
 
-		transform.scale.x = 1200.0f;
-		transform.scale.y = 720.0f;
-
-		//transform.pos.z = 600.0f;
+		auto& texData = engineContext.textureManager.GetTextureData(texture.id);
+		auto texHandle = descriptorHeap2D.GetGPU(texData.descriptorHeapIndex);
 
 		DirectX::XMMATRIX world =
-			DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, 1.0f) *
+			DirectX::XMMatrixScaling(texData.width * transform.scale.x, texData.height * transform.scale.y, 1.0f) *
 			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
 			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
 
 		SceneMatrix matrices{ world, view, proj };
-		memcpy(mapMatrix, &matrices, sizeof(SceneMatrix));
-
-		auto& texData = engineContext.textureManager.GetTextureData(texture.id);
-		auto texHandle = descriptorHeap2D.GetGPU(texData.descriptorHeapIndex);
+		memcpy(mapMatrix2D, &matrices, sizeof(SceneMatrix));
 
 		commandList->SetGraphicsRootDescriptorTable(1, texHandle);
 		commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 	}
+}
 
+void GraphicsManager::Render3D()
+{
+	commandList->SetPipelineState(pipelinestate3D.Get());
+
+	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	auto dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	commandList->OMSetRenderTargets(1, &rtvH, false, &dsvHandle);
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	commandList->SetGraphicsRootSignature(rootsignature3D.Get());
+
+	auto* heap = descriptorHeap3D.Get();
+	auto cbvHandle = descriptorHeap3D.GetGPU(0);
+
+	commandList->SetDescriptorHeaps(1, &heap);
+	commandList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+
+	for (auto e : engineContext.registry.View<Model, Transform>())
+	{
+		auto& model = engineContext.registry.GetComponent<Model>(e);
+		auto& transform = engineContext.registry.GetComponent<Transform>(e);
+
+		auto& modelData = engineContext.modelManager.GetModelData(model.id);
+
+		DirectX::XMMATRIX world =
+			DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z) *
+			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
+			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
+
+		SceneMatrix matrices{ world, view, proj };
+		memcpy(mapMatrix3D, &matrices, sizeof(SceneMatrix));
+
+		for (auto& mesh : modelData.meshes)
+		{
+			commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+			commandList->IASetIndexBuffer(&mesh.indexBufferView);
+
+			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
+		}
+	}
+}
+
+void GraphicsManager::Render()
+{
+	for (auto e : engineContext.registry.View<Camera>())
+	{
+		auto& cam = engineContext.registry.GetComponent<Camera>(e);
+
+		cam.projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(
+			DirectX::XM_PIDIV2,
+			1200.0f / 720.0f,
+			0.1f,
+			100.0f
+		);
+
+		DirectX::XMFLOAT3 eye(0, 0, -15);
+		DirectX::XMFLOAT3 target(0, 0, 0);
+		DirectX::XMFLOAT3 up(0, 1, 0);
+		cam.viewMatrix = DirectX::XMMatrixLookAtLH(
+			DirectX::XMLoadFloat3(&eye),
+			DirectX::XMLoadFloat3(&target),
+			DirectX::XMLoadFloat3(&up)
+		);
+
+
+		view = cam.viewMatrix;
+		proj = cam.projectionMatrix;
+		break;
+	}
+
+	//------------------2D------------------
+	Render2D();
+	//--------------------------------------
+
+	//------------------3D------------------
+	Render3D();
+	//--------------------------------------
 }
 
 void GraphicsManager::FrameEnd()
@@ -662,6 +955,10 @@ void GraphicsManager::FrameEnd()
 GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	: engineContext(engineContext)
 {
+
+	EnableDebugLayer();
+
+
 	//-----------DEVICE-----------
 	for (auto fv : fls)
 	{
@@ -790,10 +1087,13 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	CreateViewPort();
 	CreateScissorRect();
 	CreateSamplerDescriptorHeap();
-	CreateRenderTargetViews();
 
 	//------------------2D------------------
 	Create2DPipelineState();
+	//--------------------------------------
+
+	//------------------3D------------------
+	Create3DPipelineState();
 	//--------------------------------------
 
 	graphicsContext.device = device.Get();
@@ -802,4 +1102,28 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	graphicsContext.commandQueue = commandQueue.Get();
 	graphicsContext.descriptorHeap2D = descriptorHeap2D;
 
+}
+
+void GraphicsManager::FlushGPU()
+{
+	if (!commandQueue || !fence) return;
+
+	++_fenceVal;
+	commandQueue->Signal(fence, _fenceVal);
+
+	if (fence->GetCompletedValue() < _fenceVal)
+	{
+		HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+		if (event)
+		{
+			fence->SetEventOnCompletion(_fenceVal, event);
+			WaitForSingleObject(event, INFINITE);
+			CloseHandle(event);
+		}
+	}
+}
+
+GraphicsManager::~GraphicsManager()
+{
+	FlushGPU();
 }

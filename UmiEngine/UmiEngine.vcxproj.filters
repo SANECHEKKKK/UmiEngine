@@ -136,10 +136,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Core\Shaders\BasicVertexShader.hlsl">
+    <FxCompile Include="Core\Shaders\3DBasicVertexShader.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
-    <FxCompile Include="Core\Shaders\BasicPixelShader.hlsl">
+    <FxCompile Include="Core\Shaders\3DBasicPixelShader.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="Core\Shaders\2DBasicPixelShader.hlsl" />

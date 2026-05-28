@@ -13,7 +13,9 @@ import Settings;
 
 import EditorContext;
 import Registry;
+
 import TextureManager;
+import ModelManager;
 //import ImGuiManager;
 
 export namespace Umi
@@ -25,7 +27,7 @@ export namespace Umi
 
 		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
 		static constexpr float kFixedStep = 1.0f / 120.0f;
-		Umi::EngineContext engineContext{ registry, settings, textureManager };
+		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager };
 
 		Umi::Window window;
 
@@ -35,12 +37,8 @@ export namespace Umi
 
 		Umi::Settings settings;
 		Umi::TextureManager textureManager;
+		Umi::ModelManager modelManager;
 		//Umi::ImGuiManager imGuiManager;
-		//std::vector<std::unique_ptr<Umi::GameState>> gameStack;
-
-		//Umi::PrefabRequest bootPrefabs{
-			//.folders = { "LoadingState", "SettingsState" }
-		//};
 
 		bool bootPrefabsLoaded = false;
 

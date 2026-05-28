@@ -13,32 +13,27 @@ import TextureManager;
 import Transform;
 import Camera;
 
-//#include <Signal/Signal.h>
-//#include <GameState/GameState.h>
-
-//#include <Tag/TagComponent.h>
-
-////----------SYSTEM EVENTS----------//
-//#include <Events/ResolutionChange/ResolutionChange.h>
-//#include <Events/LoadState/LoadState.h>
-//#include <Events/OpenSettings/OpenSettings.h>
-//#include <Events/QuitGame/QuitGame.h>
-//#include <Events/ExitToMainMenu/ExitToMainMenu.h>
-////--------------------------------//
-
-
 using namespace Umi;
 
 Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
 	//imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics().GetGraphicsContext()),
-	textureManager(window.GetGraphics().GetGraphicsContext())
+	textureManager(window.GetGraphics().GetGraphicsContext()),
+	modelManager(window.GetGraphics().GetGraphicsContext())
 {
-	auto e = registry.CreateEntity();
-	auto textureid = textureManager.LoadTexture("Assets/Textures/MainMenu/TitleScreenBG.png");
-	registry.AddComponent<Texture>(e, { textureid });
-	registry.AddComponent<Transform>(e, Transform());
-
+	//auto e = registry.CreateEntity();
+	//auto textureid = textureManager.LoadTexture("Assets/Textures/MainMenu/TitleScreenBG.png");
+	//registry.AddComponent<Texture>(e, { textureid });
+	//registry.AddComponent<Transform>(e, Transform());
+	//auto& transform = registry.GetComponent<Transform>(e);
+	
+	auto b = registry.CreateEntity();
+	auto modelid = modelManager.LoadModel("Assets/Models/solderbestnew.fbx");
+	registry.AddComponent<Model>(b, { modelid });
+	registry.AddComponent<Transform>(b, Transform());
+	auto& transform = registry.GetComponent<Transform>(b);
+	transform.pos = { 0, 0, 0 };
+	transform.scale = { 1.0f, 1.0f, 1.0f };
 
 	auto a = registry.CreateEntity();
 	registry.AddComponent<Transform>(a, Transform());

@@ -169,6 +169,8 @@ Umi::TextureID Umi::TextureManager::LoadTexture(std::string_view filePath)
 	);
 	//--------------------------------------------------
 
+	textureData.height = static_cast<float>(metadata.height);
+	textureData.width = static_cast<float>(metadata.width);
 
 	textureList.push_back(textureData);
 

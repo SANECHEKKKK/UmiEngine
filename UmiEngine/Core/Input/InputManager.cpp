@@ -1,5 +1,8 @@
-#include <Input/InputManager.h>
+//#include <Input/InputManager.h>
 //#include <Settings/Settings.h>
+module;
+#include <windows.h>
+module InputManager;
 
 using namespace Umi;
 

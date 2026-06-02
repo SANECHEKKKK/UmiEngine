@@ -10,7 +10,10 @@ export namespace Umi
 		float nearClip = 0.1f;
 		float farClip = 1000.0f;
 
-		DirectX::XMMATRIX viewMatrix;
-		DirectX::XMMATRIX projectionMatrix;
+		DirectX::XMMATRIX viewMatrix2D;
+		DirectX::XMMATRIX projectionMatrix2D;
+
+		DirectX::XMMATRIX viewMatrix3D;
+		DirectX::XMMATRIX projectionMatrix3D;
 	};
 }

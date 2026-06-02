@@ -15,6 +15,7 @@ import Vertex;
 import Registry;
 import TextureManager;
 import DescriptorHeap;
+import CameraManager;
 
 using Microsoft::WRL::ComPtr;
 
@@ -199,8 +200,10 @@ export namespace Umi
 
 		UINT bbIdx = 0;
 
+		CameraManager cameraManager;
+
 		EngineContext& engineContext;
-		GraphicsContext graphicsContext { descriptorHeap2D };
+		GraphicsContext graphicsContext { descriptorHeap2D, descriptorHeap3D };
 
 		static constexpr int defaultWindowWidth = 1200;
 		static constexpr int defaultWindowHeight = 720;

@@ -5,6 +5,9 @@ module;
 
 #include <Graphics/d3dx12.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <Texture/stb_image.h>
+
 #include <DirectXMath.h>
 
 #include <string_view>
@@ -15,11 +18,12 @@ module ModelManager;
 import Model;
 import Vertex;
 import GraphicsContext;
+import EngineContext;
 
 using namespace Umi;
 using Microsoft::WRL::ComPtr;
 
-void Umi::ModelManager::LoadNode(const aiNode* node, const aiScene* scene, ModelData& modelData)
+void ModelManager::LoadNode(const aiNode* node, const aiScene* scene, ModelData& modelData)
 {
 	//--------Process all the meshes of the current node--------
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
@@ -85,7 +89,153 @@ void ModelManager::LoadMesh(const aiMesh* mesh, const aiScene* scene, ModelData&
 	meshData.indexCount = static_cast<UINT>(meshData.indices.size());
 	//-----------------------------------------------
 
+	//-----------MATERIAL INDEX EXTRACTION-----------
+	meshData.materialIndex = mesh->mMaterialIndex;
+	//-----------------------------------------------
+
 	modelData.meshes.push_back(meshData);
+}
+
+void ModelManager::LoadTexture(const aiScene* scene, ModelData& modelData)
+{
+	for (UINT i = 0; i < scene->mNumMaterials; i++)
+	{
+		Material material;
+
+		aiMaterial* aimaterial = scene->mMaterials[i];
+
+
+		// Copy diffuse color
+		aiColor3D color(0.8f, 0.8f, 0.8f);
+		aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+		material.baseColor[0] = color.r;
+		material.baseColor[1] = color.g;
+		material.baseColor[2] = color.b;
+		material.baseColor[3] = 1.0f;
+
+		aiString texPath;
+		bool textureFound = false;
+
+		// Try different texture types
+		aiTextureType textureTypes[] = {
+			aiTextureType_DIFFUSE,
+			aiTextureType_BASE_COLOR,
+			aiTextureType_UNKNOWN,
+			aiTextureType_NONE,
+			aiTextureType_EMISSIVE,
+			aiTextureType_SPECULAR,
+			aiTextureType_AMBIENT,
+			aiTextureType_REFLECTION,
+			aiTextureType_NORMALS,
+			aiTextureType_HEIGHT,
+			aiTextureType_METALNESS,
+			aiTextureType_DIFFUSE_ROUGHNESS,
+		};
+
+		for (aiTextureType type : textureTypes)
+		{
+			if (aimaterial->GetTextureCount(type) > 0)
+			{
+				if (aimaterial->GetTexture(type, 0, &texPath) == AI_SUCCESS)
+				{
+					textureFound = true;
+					break;
+				}
+			}
+		}
+
+		if (!textureFound)
+		{
+			const char* propertyKeys[] = {
+		   "$tex.file",
+		   "DiffuseColor",
+		   "$raw.DiffuseColor",
+		   "Maya|TEX_color_map",
+		   "Maya|file",
+		   "$clr.diffuse",
+		   "baseColor"
+			};
+
+			for (const char* key : propertyKeys)
+			{
+				if (aiGetMaterialString(aimaterial, key, 0, 0, &texPath) == AI_SUCCESS)
+				{
+					textureFound = true;
+					break;
+				}
+			}
+		}
+
+		if (textureFound)
+		{
+			std::string texPathStr = texPath.C_Str();
+			std::vector<uint8_t> embeddedTextureData;
+			int width, height, channels;
+
+			if (!texPathStr.empty() && texPathStr[0] == '*')
+			{
+				int texIndex = atoi(texPathStr.c_str() + 1);
+
+				if (texIndex >= 0 && texIndex < static_cast<int>(scene->mNumTextures))
+				{
+					aiTexture* embeddedTex = scene->mTextures[texIndex];
+
+					embeddedTextureData.resize(embeddedTex->mWidth);
+					memcpy(embeddedTextureData.data(), embeddedTex->pcData, embeddedTex->mWidth);
+
+					if (embeddedTex->mHeight == 0) // Compressed format
+					{
+						uint8_t* decoded = stbi_load_from_memory(
+							embeddedTextureData.data(),
+							embeddedTextureData.size(),
+							&width, &height, &channels,
+							4  // force RGBA
+						);
+
+						if (decoded) {
+							textureManager.LoadTexture3DRawData(decoded, width, height);
+							material.albedoIndex = graphicsContext.descriptorHeap3D.Size() - 2;
+							modelData.materials.push_back(material);
+							stbi_image_free(decoded);
+						}
+						else
+						{
+							// Handle decoding failure
+							width = height = 0;
+						}
+
+					}
+					else // Uncompressed ARGB8888
+					{
+						width = embeddedTex->mWidth;
+						height = embeddedTex->mHeight;
+
+						std::vector<uint8_t> pixels(width * height * 4);
+
+						for (size_t i = 0; i < width * height; i++) {
+							aiTexel& t = embeddedTex->pcData[i];
+							pixels[i * 4 + 0] = t.r;
+							pixels[i * 4 + 1] = t.g;
+							pixels[i * 4 + 2] = t.b;
+							pixels[i * 4 + 3] = t.a;
+						}
+
+						textureManager.LoadTexture3DRawData(pixels.data(), width, height);
+						material.albedoIndex = graphicsContext.descriptorHeap3D.Size() - 2;
+					}
+				}
+			}
+
+			////textureManager.LogInfo("Texture path: " + std::string(texPath.C_Str()));
+			//auto texture = textureManager.LoadTexture3D(texPath.C_Str());
+			//if (texture != INVALID_TEXTUREID)
+			//{
+			//	material.albedoIndex = textureManager.GetTextureData(texture).descriptorHeapIndex;
+			//	modelData.materials.push_back(material);
+			//}
+			//------------------CHECK FOR EMBEBBED TEXTURE------------------
+		}
+	}
 }
 
 bool ModelManager::CreateVertexBuffer(Mesh& mesh)
@@ -124,7 +274,7 @@ bool ModelManager::CreateVertexBuffer(Mesh& mesh)
 	mesh.vertexBufferView.BufferLocation = mesh.vertexBuffer->GetGPUVirtualAddress();
 	mesh.vertexBufferView.SizeInBytes = mesh.vertices.size() * sizeof(Vertex3D);
 	mesh.vertexBufferView.StrideInBytes = sizeof(Vertex3D);
-	
+
 	return true;
 }
 
@@ -201,10 +351,12 @@ ModelID ModelManager::LoadModel(std::string_view filePath)
 		return INVALID_MODELID;
 	}
 	//----------------------------------------------------
-	
+
 	//--------Recursively process the root node and its children--------
 	LoadNode(scene->mRootNode, scene, modelData);
 	//------------------------------------------------------------------
+
+	LoadTexture(scene, modelData);
 
 	for (auto& mesh : modelData.meshes)
 	{
@@ -230,7 +382,7 @@ ModelData& ModelManager::GetModelData(ModelID id)
 	return modelList[static_cast<size_t>(id)];
 }
 
-ModelManager::ModelManager(GraphicsContext& graphicsContext) : graphicsContext(graphicsContext)
+ModelManager::ModelManager(TextureManager& textureManager, GraphicsContext& graphicsContext) : textureManager(textureManager), graphicsContext(graphicsContext)
 {
 	modelList.reserve(64);
 }

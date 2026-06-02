@@ -12,6 +12,7 @@ import EditorContext;
 import TextureManager;
 import Transform;
 import Camera;
+import Keyboard;
 
 using namespace Umi;
 
@@ -19,16 +20,16 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
 	//imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics().GetGraphicsContext()),
 	textureManager(window.GetGraphics().GetGraphicsContext()),
-	modelManager(window.GetGraphics().GetGraphicsContext())
+	modelManager(textureManager, window.GetGraphics().GetGraphicsContext())
 {
-	//auto e = registry.CreateEntity();
-	//auto textureid = textureManager.LoadTexture("Assets/Textures/MainMenu/TitleScreenBG.png");
-	//registry.AddComponent<Texture>(e, { textureid });
-	//registry.AddComponent<Transform>(e, Transform());
-	//auto& transform = registry.GetComponent<Transform>(e);
+	auto e = registry.CreateEntity();
+	auto textureid = textureManager.LoadTexture2D("Assets/Textures/MainMenu/TitleScreenBG.png");
+	registry.AddComponent<Texture>(e, { textureid });
+	registry.AddComponent<Transform>(e, Transform());
+	//auto& transform = registry.GetComponent<Transform>(e);	
 	
 	auto b = registry.CreateEntity();
-	auto modelid = modelManager.LoadModel("Assets/Models/solderbestnew.fbx");
+	auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
 	registry.AddComponent<Model>(b, { modelid });
 	registry.AddComponent<Transform>(b, Transform());
 	auto& transform = registry.GetComponent<Transform>(b);
@@ -112,9 +113,6 @@ void Editor::Run()
 
 void Editor::FrameTick(float deltaTime, float& accumulator)
 {
-	//inputManager.keyboard.Update();
-	//inputManager.mouse.Update();
-
 	//HandleSignal(HandleInput());
 
 	accumulator += deltaTime;

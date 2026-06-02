@@ -102,7 +102,7 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(
 
 LRESULT Window::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	//engineContext.inputManager.UpdateRawInput(msg, wParam, lParam);
+	engineContext.inputManager.UpdateRawInput(msg, wParam, lParam);
 
 	//if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
 		//return true;

@@ -111,27 +111,36 @@
     <ClCompile Include="Core\Graphics\DescriptorHeap.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Camera\CameraManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Camera\CameraManager.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Input\InputManager.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Input\Mouse.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Material\Material.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Input\InputComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Input\InputManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Input\InputSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\Input\Keyboard.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\Input\Mouse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Core\Json\json.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Core\Graphics\d3dx12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Texture\stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

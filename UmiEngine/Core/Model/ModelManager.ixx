@@ -18,7 +18,9 @@ using Microsoft::WRL::ComPtr;
 import Model;
 import Vertex;
 import GraphicsContext;
+import TextureManager;
 import Vertex;
+import Material;
 
 export namespace Umi
 {
@@ -32,27 +34,30 @@ export namespace Umi
 		D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 		UINT indexCount = 0;
 		std::vector<UINT> indices;
-		
-		ComPtr<ID3D12Resource> texture = nullptr;
-		DirectX::XMFLOAT4 diffuseColor;
-		bool hasTexture = false;
+
+		UINT materialIndex = 0;
 	};
 
 	struct ModelData
 	{
 		std::vector<Mesh> meshes;
+		std::vector<Material> materials;
 		std::string filePath;
 	};
 
 	class ModelManager
 	{
 	private:
+		TextureManager& textureManager;
 		GraphicsContext& graphicsContext;
 
 		std::vector<ModelData> modelList;
+		
+		std::vector<ComPtr<ID3D12Resource>> textureResources;
 
 		void LoadNode(const aiNode* node, const aiScene* scene, ModelData& modelData);
 		void LoadMesh(const aiMesh* mesh, const aiScene* scene, ModelData& modelData);
+		void LoadTexture(const aiScene* scene, ModelData& modelData);
 
 		bool CreateVertexBuffer(Mesh& mesh);
 		bool CreateIndexBuffer(Mesh& mesh);
@@ -61,7 +66,7 @@ export namespace Umi
 		[[nodiscard]] ModelID LoadModel(std::string_view filePath);
 		ModelData& GetModelData(ModelID id);
 
-		ModelManager(GraphicsContext& graphicsContext);
+		ModelManager(TextureManager& textureManager, GraphicsContext& graphicsContext);
 		~ModelManager() = default;
 	};
 }

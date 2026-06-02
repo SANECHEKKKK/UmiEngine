@@ -9,6 +9,7 @@ export module TextureManager;
 
 import Texture;
 import GraphicsContext;
+import DescriptorHeap;
 
 using Microsoft::WRL::ComPtr;
 
@@ -30,7 +31,15 @@ export namespace Umi
 		std::vector<TextureData> textureList;
 
 	public:
-		[[nodiscard]] TextureID LoadTexture(std::string_view filePath);
+		[[nodiscard]] TextureID LoadTexture(std::string_view filePath, DescriptorHeap& descriptorHeap);
+
+		//-----------------------TEMPROARY-----------------------
+		[[nodiscard]] TextureID LoadTexture2D(std::string_view filePath);
+		[[nodiscard]] TextureID LoadTexture3D(std::string_view filePath);
+		[[nodiscard]] TextureID LoadTexture3DRawData(std::vector<uint8_t> data, int width, int height);
+		[[nodiscard]] TextureID LoadTexture3DRawData(uint8_t* data, int width, int height);
+		//-----------------------TEMPROARY-----------------------
+
 		void UnloadTexture(TextureID id);
 		TextureData& GetTextureData(TextureID id);
 

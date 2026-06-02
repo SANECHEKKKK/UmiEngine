@@ -1,19 +1,20 @@
-#pragma once
+module;
 #include <iostream>
+export module Mouse;
 
-namespace Umi
+export namespace Umi
 {
 	class Mouse
 	{
 	private:
-		bool leftIsPressed = false;
-		bool rightIsPressed = false;
-		bool leftIsPressedPrev = false;
-		bool rightIsPressedPrev = false;
+		inline static bool leftIsPressed = false;
+		inline static bool rightIsPressed = false;
+		inline static bool leftIsPressedPrev = false;
+		inline static bool rightIsPressedPrev = false;
 
 	public:
-		int x = 0;
-		int y = 0;
+		inline static int x = 0;
+		inline static int y = 0;
 
 		void OnMouseMove(int x, int y) noexcept;
 		void OnLeftPressed(int x, int y) noexcept;
@@ -27,10 +28,10 @@ namespace Umi
 		//int GetPosX() const noexcept;
 		//int GetPosY() const noexcept;
 		//bool IsInWindow() const noexcept;
-		bool LeftIsPressed() const noexcept;
-		bool RightIsPressed() const noexcept;
-		bool LeftIsTriggered() noexcept;
-		bool RightIsTriggered() noexcept;
+		static bool LeftIsPressed() noexcept;
+		static bool RightIsPressed() noexcept;
+		static bool LeftIsTriggered() noexcept;
+		static bool RightIsTriggered() noexcept;
 
 		void Update() noexcept;
 

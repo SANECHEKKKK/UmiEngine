@@ -222,18 +222,16 @@ void ModelManager::LoadTexture(const aiScene* scene, ModelData& modelData)
 
 						textureManager.LoadTexture3DRawData(pixels.data(), width, height);
 						material.albedoIndex = graphicsContext.descriptorHeap3D.Size() - 2;
+						modelData.materials.push_back(material);
 					}
 				}
 			}
 
 			////textureManager.LogInfo("Texture path: " + std::string(texPath.C_Str()));
-			//auto texture = textureManager.LoadTexture3D(texPath.C_Str());
-			//if (texture != INVALID_TEXTUREID)
-			//{
-			//	material.albedoIndex = textureManager.GetTextureData(texture).descriptorHeapIndex;
-			//	modelData.materials.push_back(material);
-			//}
-			//------------------CHECK FOR EMBEBBED TEXTURE------------------
+		}
+		else
+		{
+			modelData.materials.push_back(material);
 		}
 	}
 }

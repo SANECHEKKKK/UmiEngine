@@ -29,7 +29,7 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
 	//auto& transform = registry.GetComponent<Transform>(e);	
 	
 	auto b = registry.CreateEntity();
-	auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
+	auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
 	registry.AddComponent<Model>(b, { modelid });
 	registry.AddComponent<Transform>(b, Transform());
 	auto& transform = registry.GetComponent<Transform>(b);

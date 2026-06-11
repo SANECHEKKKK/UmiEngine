@@ -8,6 +8,7 @@ import Transform;
 import Keyboard;
 
 using namespace Umi;
+import Settings;
 
 void CameraManager::Update()
 {
@@ -20,8 +21,8 @@ void CameraManager::Update()
 		//----------------------------2D-----------------------------
 		{
 			camera.projectionMatrix2D = DirectX::XMMatrixOrthographicLH(
-				1200.0f,
-				720.0f,
+				Settings::getResolution().width,
+				Settings::getResolution().height,
 				camera.nearClip,
 				camera.farClip
 			);
@@ -37,11 +38,11 @@ void CameraManager::Update()
 		}
 		//-----------------------------------------------------------
 
-	//----------------------------3D-----------------------------
+		//----------------------------3D-----------------------------
 		{
 			camera.projectionMatrix3D = DirectX::XMMatrixPerspectiveFovLH(
 				DirectX::XMConvertToRadians(camera.fov),
-				1200.0f / 720.0f,
+				Settings::getResolution().width / static_cast<float>(Settings::getResolution().height),
 				camera.nearClip,
 				camera.farClip
 			);
@@ -65,22 +66,22 @@ void CameraManager::Update()
 		}
 		//-----------------------------------------------------------
 
-		if (Keyboard::IsKeyDown(KK_W))
-		{
-			transform.pos.z += 0.1f;
-		}
-		if (Keyboard::IsKeyDown(KK_S))
-		{
-			transform.pos.z -= 0.1f;
-		}
-		if (Keyboard::IsKeyDown(KK_A))
-		{
-			transform.pos.x -= 0.1f;
-		}
-		if (Keyboard::IsKeyDown(KK_D))
-		{
-			transform.pos.x += 0.1f;
-		}
+		//if (Keyboard::IsKeyDown(KK_W))
+		//{
+		//	transform.pos.z += 0.1f;
+		//}
+		//if (Keyboard::IsKeyDown(KK_S))
+		//{
+		//	transform.pos.z -= 0.1f;
+		//}
+		//if (Keyboard::IsKeyDown(KK_A))
+		//{
+		//	transform.pos.x -= 0.1f;
+		//}
+		//if (Keyboard::IsKeyDown(KK_D))
+		//{
+		//	transform.pos.x += 0.1f;
+		//}
 	}
 }
 

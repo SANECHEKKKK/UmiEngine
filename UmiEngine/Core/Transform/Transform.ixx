@@ -1,10 +1,12 @@
+module;
+#include <EngineApi/EngineApi.h>
 export module Transform;
 
-import Vector;
+import Math;
 
 export namespace Umi
 {
-	struct Transform
+	struct ENGINE_API Transform
 	{
 		Vector3 pos;
 		Vector3 rot;	// in radians

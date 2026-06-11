@@ -14,6 +14,7 @@
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 module GraphicsManager;
 
@@ -22,6 +23,7 @@ using namespace Umi;
 
 import Registry;
 import Error;
+import Settings;
 
 import Texture;
 import Model;
@@ -368,7 +370,7 @@ void GraphicsManager::Load3DShaders()
 	{
 		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 		{
-			Error::FatalError("3D vertex shader .cso not found. Did you compile it?");
+			Error::FatalError("3D vertex shader .cso not found");
 		}
 		else
 		{
@@ -386,7 +388,7 @@ void GraphicsManager::Load3DShaders()
 	{
 		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 		{
-			Error::FatalError("3D pixel shader .cso not found. Did you compile it?");
+			Error::FatalError("3D pixel shader .cso not found");
 		}
 		else
 		{
@@ -600,8 +602,8 @@ void GraphicsManager::CreateDepthStencilView()
 {
 	D3D12_RESOURCE_DESC depthResDesc = {};
 	depthResDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	depthResDesc.Width = defaultWindowWidth;
-	depthResDesc.Height = defaultWindowHeight;
+	depthResDesc.Width = Settings::getResolution().width;
+	depthResDesc.Height = Settings::getResolution().height;
 	depthResDesc.DepthOrArraySize = 1;
 	depthResDesc.Format = DXGI_FORMAT_D32_FLOAT;
 	depthResDesc.SampleDesc.Count = 1;
@@ -650,8 +652,8 @@ void GraphicsManager::CreateDepthStencilView()
 
 void GraphicsManager::CreateViewPort()
 {
-	viewport.Width = static_cast<float>(defaultWindowWidth);
-	viewport.Height = static_cast<float>(defaultWindowHeight);
+	viewport.Width = static_cast<float>(Settings::getResolution().width);
+	viewport.Height = static_cast<float>(Settings::getResolution().height);
 	viewport.TopLeftX = 0.0f;
 	viewport.TopLeftY = 0.0f;
 	viewport.MaxDepth = 1.0f;
@@ -662,8 +664,8 @@ void GraphicsManager::CreateScissorRect()
 {
 	scissorRect.top = 0;
 	scissorRect.left = 0;
-	scissorRect.right = scissorRect.left + static_cast<LONG>(defaultWindowWidth);
-	scissorRect.bottom = scissorRect.top + static_cast<LONG>(defaultWindowHeight);
+	scissorRect.right = scissorRect.left + static_cast<LONG>(Settings::getResolution().width);
+	scissorRect.bottom = scissorRect.top + static_cast<LONG>(Settings::getResolution().height);
 }
 
 void GraphicsManager::CreateSamplerDescriptorHeap()
@@ -679,6 +681,204 @@ void GraphicsManager::CreateSamplerDescriptorHeap()
 	//	D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
 	//	D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 }
+
+void GraphicsManager::CreatePeraResource()
+{
+	auto& bbuf = backBuffers[0];
+	auto resDesc = bbuf->GetDesc();
+
+	D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+	float clearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };//白
+	D3D12_CLEAR_VALUE clearValue = CD3DX12_CLEAR_VALUE(DXGI_FORMAT_R8G8B8A8_UNORM, clearColor);
+
+	auto result = device->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		&clearValue,
+		IID_PPV_ARGS(&peraResource));
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create pera resource.");
+	}
+
+	auto heapDesc = rtvDescriptorHeap->GetDesc();
+	heapDesc.NumDescriptors = 1;
+	result = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&peraRTVHeap));
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create pera RTV heap.");
+	}
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	device->CreateRenderTargetView(peraResource.Get(), &rtvDesc, peraRTVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	heapDesc.NumDescriptors = 1;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	result = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&peraSRVHeap));
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create pera SRV heap.");
+	}
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = rtvDesc.Format;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	device->CreateShaderResourceView(peraResource.Get(), &srvDesc, peraSRVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(pv));
+	result = device->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&peraVB));
+
+	peraVBV.BufferLocation = peraVB->GetGPUVirtualAddress();
+	peraVBV.SizeInBytes = sizeof(pv);
+	peraVBV.StrideInBytes = sizeof(Vertex2D);
+	Vertex2D* mapPeraVB = nullptr;
+	peraVB->Map(0, nullptr, (void**)&mapPeraVB);
+	std::copy(std::begin(pv), std::end(pv), mapPeraVB);
+	peraVB->Unmap(0, nullptr);
+}
+
+void GraphicsManager::CreatePeraPipelineState()
+{
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+	{
+		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	},
+	{
+		"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	}
+	};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
+	gpsDesc.InputLayout.NumElements = _countof(inputLayout);
+	gpsDesc.InputLayout.pInputElementDescs = inputLayout;
+
+	ComPtr<ID3DBlob> vs;
+	ComPtr<ID3DBlob> ps;
+
+	auto result = D3DReadFileToBlob(
+		L"peraVertex.cso",
+		&vs
+	);
+
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			Error::FatalError("Pera vertex shader .cso not found");
+		}
+		else
+		{
+			Error::FatalError("Failed to load Pera vertex shader .cso.");
+		}
+	}
+
+	// Load precompiled pixel shader
+	result = D3DReadFileToBlob(
+		L"peraPixel.cso",
+		&ps
+	);
+
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			Error::FatalError("Pera pixel shader .cso not found");
+		}
+		else
+		{
+			Error::FatalError("Failed to load Pera pixel shader .cso.");
+		}
+	}
+
+	gpsDesc.VS = CD3DX12_SHADER_BYTECODE(vs.Get());
+	gpsDesc.PS = CD3DX12_SHADER_BYTECODE(ps.Get());
+
+	gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	gpsDesc.NumRenderTargets = 1;
+	gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	gpsDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+	gpsDesc.SampleDesc.Count = 1;
+	gpsDesc.SampleDesc.Quality = 0;
+	gpsDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = CD3DX12_STATIC_SAMPLER_DESC(0);
+
+
+	D3D12_DESCRIPTOR_RANGE range = {};
+	range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	range.BaseShaderRegister = 0;
+	range.NumDescriptors = 1;
+
+	D3D12_ROOT_PARAMETER rp = {};
+	rp.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rp.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rp.DescriptorTable.pDescriptorRanges = &range;
+	rp.DescriptorTable.NumDescriptorRanges = 1;
+
+	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+	rsDesc.NumParameters = 1;
+	rsDesc.pParameters = &rp;
+	rsDesc.NumStaticSamplers = 1;
+	rsDesc.pStaticSamplers = &samplerDesc;
+	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	ComPtr<ID3DBlob> rsBlob;
+	ComPtr<ID3DBlob> errBlob;
+
+	result = D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &errBlob);
+	if (FAILED(result))
+	{
+		std::string errorMessage;
+		errorMessage.resize(errBlob->GetBufferSize());
+		std::copy_n(static_cast<char*>(errBlob->GetBufferPointer()), errBlob->GetBufferSize(), errorMessage.begin());
+		Error::FatalError("Failed to serialize Pera root signature. " + errorMessage);
+	}
+	result = device->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&rootsignaturePera));
+	if (FAILED(result))
+	{
+		Error::FatalError("Failed to create Pera root signature.");
+	}
+
+	gpsDesc.pRootSignature = rootsignaturePera.Get();
+	result = device->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(&pipelinestatePera));
+	if (FAILED(result))
+	{
+		Error::FatalError("Failed to create Pera pipeline state.");
+	}
+}
+
+//--------------------IMPLEMENT--------------------
+void GraphicsManager::CreatePeraRTVHeap()
+{
+	
+}
+
+void GraphicsManager::CreatePeraSRVHeap()
+{
+
+}
+//-------------------------------------------------
 
 ImguiInitInfo* GraphicsManager::GetImguiInitInfo()
 {
@@ -702,6 +902,44 @@ ImguiInitInfo* GraphicsManager::GetImguiInitInfo()
 	return &initInfo;
 }
 
+void GraphicsManager::Resize(int width, int height)
+{
+	if (width == 0 || height == 0)
+		return;
+
+	FlushGPU();
+
+	for (uint32_t i = 0; i < 2; ++i)
+		backBuffers[i].Reset();
+	//depthStencilBuffer.Reset();
+
+	// 3. Resize the swap chain (0 = keep count/format)
+	DXGI_SWAP_CHAIN_DESC1 desc{};
+	swapChain->GetDesc1(&desc);
+	auto result = swapChain->ResizeBuffers(
+		2, width, height,
+		desc.Format, desc.Flags);
+
+	// 4. Recreate RTVs
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
+		rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	for (uint32_t i = 0; i < 2; ++i)
+	{
+		result = swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i]));
+		if (result != S_OK)
+		{
+			Error::FatalError("Failed to get swap chain buffer.");
+		}
+		device->CreateRenderTargetView(backBuffers[i].Get(), nullptr, rtvHandle);
+		rtvHandle.Offset(1, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+	}
+
+
+	// 6. Viewport + scissor
+	viewport = { 0.f, 0.f, (float)width, (float)height, 0.f, 1.f };
+	scissorRect = { 0, 0, (LONG)width, (LONG)height };
+}
+
 void GraphicsManager::FrameStart()
 {
 	bbIdx = swapChain->GetCurrentBackBufferIndex();
@@ -715,11 +953,18 @@ void GraphicsManager::FrameStart()
 	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	commandList->ResourceBarrier(1, &BarrierDesc);
 
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		peraResource.Get(),
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	commandList->ResourceBarrier(1, &barrier);
 
 	//レンダーターゲットを指定
-	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	commandList->OMSetRenderTargets(1, &rtvH, false, nullptr);
+	auto rtvH = peraRTVHeap->GetCPUDescriptorHandleForHeapStart();
+	//rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	auto dsvH = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	commandList->OMSetRenderTargets(1, &rtvH, false, &dsvH);
 
 	auto dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -728,9 +973,12 @@ void GraphicsManager::FrameStart()
 	float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };//白
 	commandList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
+}
 
-	//ID3D12DescriptorHeap* heaps[] = { imguiSRVDescriptorHeap.Get() };
-	//commandList->SetDescriptorHeaps(1, heaps);
+void GraphicsManager::StartImguiFrame()
+{
+	ID3D12DescriptorHeap* heaps[] = { imguiSRVDescriptorHeap.Get() };
+	commandList->SetDescriptorHeaps(1, heaps);
 }
 
 void GraphicsManager::Render2D()
@@ -783,14 +1031,6 @@ void GraphicsManager::Render3D()
 	Camera* camera = cameraManager.GetMainCamera();
 
 	commandList->SetPipelineState(pipelinestate3D.Get());
-
-	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-	auto dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	commandList->OMSetRenderTargets(1, &rtvH, false, &dsvHandle);
-	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
 
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissorRect);
@@ -847,6 +1087,36 @@ void GraphicsManager::Render()
 	//------------------3D------------------
 	Render3D();
 	//--------------------------------------
+
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		peraResource.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	commandList->ResourceBarrier(1, &barrier);
+
+	auto backBufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		backBuffers[bbIdx].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_STATE_PRESENT);
+	commandList->ResourceBarrier(1, &backBufferBarrier);
+
+	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	commandList->OMSetRenderTargets(1, &rtvH, false, nullptr);
+
+	commandList->SetPipelineState(pipelinestatePera.Get());
+	commandList->SetGraphicsRootSignature(rootsignaturePera.Get());
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	commandList->SetDescriptorHeaps(1, peraSRVHeap.GetAddressOf());
+	auto handle = peraSRVHeap->GetGPUDescriptorHandleForHeapStart();
+
+	commandList->SetGraphicsRootDescriptorTable(0, handle);
+
+	commandList->IASetVertexBuffers(0, 1, &peraVBV);
+
+	commandList->DrawInstanced(4, 1, 0, 0);
 }
 
 void GraphicsManager::FrameEnd()
@@ -951,8 +1221,8 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	//-------------SWAPCHAIN-------------
 	DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
 
-	swapchainDesc.Width = 1200;
-	swapchainDesc.Height = 720;
+	swapchainDesc.Width = Settings::getResolution().width;
+	swapchainDesc.Height = Settings::getResolution().height;
 	swapchainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapchainDesc.Stereo = false;
 	swapchainDesc.SampleDesc.Count = 1;
@@ -1026,6 +1296,11 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 
 	//------------------3D------------------
 	Create3DPipelineState();
+	//--------------------------------------
+
+	//-----------------PERA-----------------
+	CreatePeraResource();
+	CreatePeraPipelineState();
 	//--------------------------------------
 
 	graphicsContext.device = device.Get();

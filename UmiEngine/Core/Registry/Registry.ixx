@@ -2,6 +2,7 @@ module;
 #include <unordered_map>
 #include <memory>
 #include <typeindex>
+#include <EngineApi/EngineApi.h>
 export module Registry;
 
 import Entity;
@@ -31,6 +32,12 @@ namespace Umi
 			denseEntities.push_back(e);
 		}
 
+		void Add(Entity e, T&& component)
+		{
+			components[e] = std::move(component); // Move instead of copy!
+			denseEntities.push_back(e);
+		}
+
 		T& Get(Entity e)
 		{
 			return components.at(e);
@@ -56,7 +63,7 @@ namespace Umi
 	};
 
 	//-----------EXPORT-----------
-	export class Registry
+	export class ENGINE_API Registry
 	{
 	private:
 		std::vector<Entity> freeEntities;
@@ -113,6 +120,12 @@ namespace Umi
 		}
 
 		template<typename T>
+		void AddComponent(Entity e, T&& component)
+		{
+			GetPool<T>().Add(e, std::move(component));
+		}
+
+		template<typename T>
 		bool HasComponent(Entity e)
 		{
 			return GetPool<T>().Has(e);
@@ -129,6 +142,14 @@ namespace Umi
 		{
 			return Umi::View<Components...>(*this);
 		}
+
+		Registry() = default;
+
+		Registry(const Registry&) = delete;
+		Registry& operator=(const Registry&) = delete;
+
+		Registry(Registry&&) = default;
+		Registry& operator=(Registry&&) = default;
 	};
 
 	template<typename... Components>

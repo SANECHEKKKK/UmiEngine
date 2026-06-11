@@ -1,10 +1,12 @@
 module;
 #include <iostream>
+
+#include <EngineApi/EngineApi.h>
 export module Mouse;
 
 export namespace Umi
 {
-	class Mouse
+	class ENGINE_API Mouse
 	{
 	private:
 		inline static bool leftIsPressed = false;

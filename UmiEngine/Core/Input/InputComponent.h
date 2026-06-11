@@ -1,5 +1,5 @@
 #pragma once
-import Vector;
+import Math;
 
 namespace Umi
 {

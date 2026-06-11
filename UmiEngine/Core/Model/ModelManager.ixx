@@ -9,8 +9,9 @@ module;
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-
 #include <wrl/client.h>
+
+#include <EngineApi/EngineApi.h>
 export module ModelManager;
 
 using Microsoft::WRL::ComPtr;
@@ -24,7 +25,7 @@ import Material;
 
 export namespace Umi
 {
-	struct Mesh
+	struct ENGINE_API Mesh
 	{
 		ComPtr<ID3D12Resource> vertexBuffer = nullptr;
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
@@ -38,14 +39,14 @@ export namespace Umi
 		UINT materialIndex = 0;
 	};
 
-	struct ModelData
+	struct ENGINE_API ModelData
 	{
 		std::vector<Mesh> meshes;
 		std::vector<Material> materials;
 		std::string filePath;
 	};
 
-	class ModelManager
+	class ENGINE_API ModelManager
 	{
 	private:
 		TextureManager& textureManager;

@@ -1,3 +1,5 @@
+module;
+#include <EngineApi/EngineApi.h>
 export module EngineContext;
 
 import Registry;
@@ -8,7 +10,7 @@ import InputManager;
 
 export namespace Umi
 {
-	struct EngineContext
+	struct ENGINE_API EngineContext
 	{
 		Registry& registry;
 		Settings& settings;

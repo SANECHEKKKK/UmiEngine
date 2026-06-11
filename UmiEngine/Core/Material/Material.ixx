@@ -3,6 +3,8 @@ module;
 #include <limits>
 export module Material;
 
+import Math;
+
 export namespace Umi
 {
     struct Material {
@@ -14,7 +16,7 @@ export namespace Umi
         //------------------------------------------------
 
         //---------Properties for custom materials--------
-        float baseColor[4] = { 1, 1, 1, 1 };
+        float4 baseColor = { 1, 1, 1, 1 };
         float roughness = 0.5f;  // overridden by roughness map if present
         float metallic = 0.0f;  // overridden by metallic map if present
         float emissive = 0.0f;

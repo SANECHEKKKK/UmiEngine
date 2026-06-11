@@ -108,10 +108,10 @@ void ModelManager::LoadTexture(const aiScene* scene, ModelData& modelData)
 		// Copy diffuse color
 		aiColor3D color(0.8f, 0.8f, 0.8f);
 		aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
-		material.baseColor[0] = color.r;
-		material.baseColor[1] = color.g;
-		material.baseColor[2] = color.b;
-		material.baseColor[3] = 1.0f;
+		material.baseColor.x = color.r;
+		material.baseColor.y = color.g;
+		material.baseColor.z = color.b;
+		material.baseColor.w = 1.0f;
 
 		aiString texPath;
 		bool textureFound = false;

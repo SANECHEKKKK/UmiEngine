@@ -2,15 +2,42 @@ module;
 #include <DirectXMath.h>
 #include <numbers>
 
-export module Vector;
+#include <EngineApi/EngineApi.h>
+export module Math;
+//export module Vector;
 
 export namespace Umi
 {
 	constexpr double PI = std::numbers::pi;
 	constexpr double TWO_PI = 2 * std::numbers::pi;
 
+	struct ENGINE_API float3
+	{
+		float x, y, z;
+		float3() : x(0), y(0), z(0) {}
+		float3(float x, float y, float z) : x(x), y(y), z(z) {}
+		//Struct operators//
+		operator struct DirectX::XMFLOAT3() const
+		{
+			return DirectX::XMFLOAT3(x, y, z);
+		}
+	};
 
-	struct Vector2
+
+	struct ENGINE_API float4
+	{
+		float x, y, z, w;
+		float4() : x(0), y(0), z(0), w(0) {}
+		float4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+		//Struct operators//
+		operator struct DirectX::XMFLOAT4() const
+		{
+			return DirectX::XMFLOAT4(x, y, z, w);
+		}
+	};
+
+
+	struct ENGINE_API Vector2
 	{
 		float x, y;
 
@@ -135,7 +162,7 @@ export namespace Umi
 	};
 
 
-	struct Vector3
+	struct ENGINE_API Vector3
 	{
 		float x, y, z;
 

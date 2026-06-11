@@ -2,6 +2,7 @@ module;
 #define NOMINMAX
 #include <windows.h>
 #include <algorithm>
+#include <memory>
 
 #pragma comment (lib, "winmm.lib")
 module Editor;
@@ -13,32 +14,44 @@ import TextureManager;
 import Transform;
 import Camera;
 import Keyboard;
+import CameraMove;
+import Script;
 
 using namespace Umi;
 
 Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
-	//imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics().GetGraphicsContext()),
+	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext.registry, editorContext),
 	textureManager(window.GetGraphics().GetGraphicsContext()),
 	modelManager(textureManager, window.GetGraphics().GetGraphicsContext())
 {
+
 	auto e = registry.CreateEntity();
 	auto textureid = textureManager.LoadTexture2D("Assets/Textures/MainMenu/TitleScreenBG.png");
 	registry.AddComponent<Texture>(e, { textureid });
 	registry.AddComponent<Transform>(e, Transform());
 	//auto& transform = registry.GetComponent<Transform>(e);	
-	
+
 	auto b = registry.CreateEntity();
-	auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
+	auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
+	//auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
 	registry.AddComponent<Model>(b, { modelid });
 	registry.AddComponent<Transform>(b, Transform());
 	auto& transform = registry.GetComponent<Transform>(b);
 	transform.pos = { 0, 0, 0 };
 	transform.scale = { 1.0f, 1.0f, 1.0f };
+	//auto& model = registry.GetComponent<Model>(b);
+	//modelManager.GetModelData(model.id).materials[0].baseColor[1] = { 1.0f };
 
 	auto a = registry.CreateEntity();
 	registry.AddComponent<Transform>(a, Transform());
 	registry.AddComponent<Camera>(a, Camera());
+	scriptManager.RegisterScript<CameraMove>("CameraMove");
+	auto script = scriptManager.CreateScript("CameraMove");
+	script->Bind(a, &engineContext);
+	Script cameraMoveScript;
+	cameraMoveScript.scripts.push_back(std::move(script));
+	registry.AddComponent<Script>(a, std::move(cameraMoveScript));
 }
 
 void Editor::Run()
@@ -115,6 +128,7 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 {
 	//HandleSignal(HandleInput());
 
+
 	accumulator += deltaTime;
 	//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
 	while (accumulator >= kFixedStep)
@@ -126,9 +140,11 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 	const float alpha = accumulator / kFixedStep;
 
 	//HandleSignal(Update(deltaTime));
+	scriptManager.Update();
 
 	window.GetGraphics().FrameStart();
 	window.GetGraphics().Render();
+	//window.GetGraphics().StartImguiFrame();
 	//imGuiManager.Render();
 	window.GetGraphics().FrameEnd();
 	//window.GetGraphics().Clear();

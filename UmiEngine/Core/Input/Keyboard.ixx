@@ -1,5 +1,7 @@
 module;
 #include <windows.h>
+
+#include <EngineApi/EngineApi.h>
 export module Keyboard;
 
 
@@ -374,7 +376,7 @@ export namespace Umi
 		bool Reserved26 : 1;
 	} Keyboard_State;
 
-	class Keyboard
+	class ENGINE_API Keyboard
 	{
 	private:
 		inline static Keyboard_State gState;

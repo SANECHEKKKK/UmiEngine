@@ -7,6 +7,8 @@ module;
 #include <DirectXMath.h>
 
 #include <wrl/client.h>
+
+#include <EngineApi/EngineApi.h>
 export module GraphicsManager;
 
 import EngineContext;
@@ -29,7 +31,7 @@ export namespace Umi
 		//DirectX::XMFLOAT3 eye;
 	};
 
-	struct DescriptorHeapAllocator {
+	struct ENGINE_API DescriptorHeapAllocator {
 		ID3D12DescriptorHeap* heap = nullptr;
 		D3D12_DESCRIPTOR_HEAP_TYPE  type{};
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuStart{};
@@ -71,9 +73,11 @@ export namespace Umi
 		DescriptorHeapAllocator imguiSrvAllocator;
 	};
 
-	class GraphicsManager
+	class ENGINE_API GraphicsManager
 	{
 	private:
+
+#pragma region General
 		ComPtr<ID3D12Device> device = nullptr;
 		ComPtr<IDXGIFactory6> factory = nullptr;
 
@@ -116,16 +120,35 @@ export namespace Umi
 		D3D12_RECT scissorRect = {};
 		//-----------------------------------------
 
+		//-----------PERMANENT_RESOURCE------------
+		ComPtr<ID3D12Resource> peraResource;
+		ComPtr<ID3D12DescriptorHeap> peraRTVHeap;
+		ComPtr<ID3D12DescriptorHeap> peraSRVHeap;
+
+		ComPtr<ID3D12Resource> peraVB;
+		D3D12_VERTEX_BUFFER_VIEW peraVBV = {};
+		Vertex2D pv[4] = {
+			{{-1.0f,-1.0f, 0.0f}, {0.0f,1.0f} },//左下
+			{{-1.0f, 1.0f, 0.0f} ,{0.0f,0.0f}},//左上
+			{{ 1.0f,-1.0f, 0.0f} ,{1.0f,1.0f}},//右下
+			{{ 1.0f, 1.0f, 0.0f} ,{1.0f,0.0f}},//右上
+		};
+
+		ComPtr<ID3D12PipelineState> pipelinestatePera;
+		ComPtr<ID3D12RootSignature> rootsignaturePera;
+		//-----------------------------------------
+
 		//------------------FENCE------------------
 		ID3D12Fence* fence = nullptr;
 		UINT64 _fenceVal = 0;
 		//-----------------------------------------
 
 		//------------------IMGUI------------------
-		ComPtr<ID3D12DescriptorHeap> imguiSRVDescriptorHeap = nullptr;
+		ComPtr<ID3D12DescriptorHeap> imguiSRVDescriptorHeap;
 		DescriptorHeapAllocator imguiSrvAllocator;
 		ImguiInitInfo initInfo;
 		//-----------------------------------------
+#pragma endregion General
 
 #pragma region 2D
 		//--------------2D_VERTICES----------------
@@ -203,7 +226,7 @@ export namespace Umi
 		CameraManager cameraManager;
 
 		EngineContext& engineContext;
-		GraphicsContext graphicsContext { descriptorHeap2D, descriptorHeap3D };
+		GraphicsContext graphicsContext{ descriptorHeap2D, descriptorHeap3D };
 
 		static constexpr int defaultWindowWidth = 1200;
 		static constexpr int defaultWindowHeight = 720;
@@ -217,7 +240,11 @@ export namespace Umi
 		void CreateViewPort();
 		void CreateScissorRect();
 		void CreateSamplerDescriptorHeap();
-		void CreatePipelineState();
+
+		void CreatePeraResource();
+		void CreatePeraRTVHeap();
+		void CreatePeraSRVHeap();
+		void CreatePeraPipelineState();
 
 		//----------------2D----------------
 		void Create2DVertexBuffer();
@@ -227,7 +254,7 @@ export namespace Umi
 		void Create2DMatrixContantBuffer();
 		void Create2DPipelineState();
 		//----------------------------------
-		
+
 		//----------------3D----------------
 		void Load3DShaders();
 		void Create3DDescriptorHeap();
@@ -244,8 +271,11 @@ export namespace Umi
 	public:
 		ImguiInitInfo* GetImguiInitInfo();
 
+		void Resize(int width, int height);
+
 		void FrameStart();
 		void Render();
+		void StartImguiFrame();
 		void FrameEnd();
 
 		GraphicsContext& GetGraphicsContext() noexcept { return graphicsContext; }

@@ -11,13 +11,16 @@ module Window;
 //#include <Input/InputManager.h>
 //#include <Resolution/Resolution.h>
 
+import Settings;
+import Resolution;
+
 using namespace Umi;
 
 Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineContext)
 	: hInstance(hInstance), engineContext(engineContext)
 {
 
-	//Resolution bufferResolution = engineContext.settings.getResolution();
+	Resolution bufferResolution = engineContext.settings.getResolution();
 
 	WNDCLASSEX wcex{};
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -33,8 +36,8 @@ Window::Window(HINSTANCE hInstance, const char* title, EngineContext& engineCont
 
 	RegisterClassEx(&wcex);
 
-	//RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
-	RECT wr = { 0, 0, 1200, 720};
+	RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
+	//RECT wr = { 0, 0, 1200, 720};
 	AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, FALSE);
 
 	hWnd = CreateWindowEx(
@@ -163,7 +166,7 @@ void Window::SetResolution(int width, int height)
 
 		ShowWindow(hWnd, SW_RESTORE);
 	}
-	//graphics->Reset();
+	graphics->Resize(width, height);
 
 }
 
@@ -173,13 +176,13 @@ void Window::SetWindowedFullScreen()
 	//Resolution bufferResolution = engineContext.settings.getScreenResolution();
 	if (hWnd != nullptr) {
 		//RECT wr = { 0, 0, bufferResolution.width, bufferResolution.height };
-		RECT wr = { 0, 0, 1200, 720 };
+		RECT wr = { 0, 0, Settings::getResolution().width, Settings::getResolution().height };
 		AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 		SetWindowPos(hWnd, nullptr, 0, 0, wr.right - wr.left, wr.bottom - wr.top,
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 		SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
 		//SetWindowPos(hWnd, HWND_TOP, 0, 0, bufferResolution.width, bufferResolution.height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
-		SetWindowPos(hWnd, HWND_TOP, 0, 0, 1200, 720, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+		SetWindowPos(hWnd, HWND_TOP, 0, 0, Settings::getResolution().width, Settings::getResolution().height, SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
 		//graphics->Reset();
 	}
 	//EventManager::Get().ResolutionChanged();

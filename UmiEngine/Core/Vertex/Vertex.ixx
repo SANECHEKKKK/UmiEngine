@@ -1,16 +1,18 @@
 module;
 #include <DirectXMath.h>
+
+#include <EngineApi/EngineApi.h>
 export module Vertex;
 
 export namespace Umi
 {
-	struct Vertex2D
+	struct ENGINE_API Vertex2D
 	{
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT2 texcoord;
 	};
 
-	struct Vertex3D
+	struct ENGINE_API Vertex3D
 	{
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT3 normal;

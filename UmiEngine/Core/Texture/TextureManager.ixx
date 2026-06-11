@@ -5,6 +5,8 @@ module;
 #include <wrl/client.h>
 
 #include <Graphics/d3dx12.h>
+
+#include <EngineApi/EngineApi.h>
 export module TextureManager;
 
 import Texture;
@@ -15,7 +17,7 @@ using Microsoft::WRL::ComPtr;
 
 export namespace Umi
 {
-	struct TextureData
+	struct ENGINE_API TextureData
 	{
 		ComPtr<ID3D12Resource> texBuff = nullptr;
 		std::string filePath;
@@ -23,7 +25,7 @@ export namespace Umi
 		float width, height;
 	};
 
-	class TextureManager
+	class ENGINE_API TextureManager
 	{
 	private:
 		GraphicsContext& graphicsContext;

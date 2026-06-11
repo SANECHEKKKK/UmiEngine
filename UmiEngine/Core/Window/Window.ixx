@@ -2,14 +2,16 @@ module;
 #include <windows.h>
 #include <string>
 #include <memory>
+
+#include <EngineApi/EngineApi.h>
 export module Window;
 
 import GraphicsManager;
 import EngineContext;
 
-namespace Umi
+export namespace Umi
 {
-	export class Window
+	class ENGINE_API Window
 	{
 	private:
 		static LRESULT CALLBACK WndProcSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

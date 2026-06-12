@@ -3,9 +3,11 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <filesystem>
+#include <stdexcept>
+
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
-#include <stdexcept>
 #include <DirectXMath.h>
 
 #include <Graphics/d3dx12.h>
@@ -29,6 +31,12 @@ import Texture;
 import Model;
 import Transform;
 import Camera;
+
+std::filesystem::path GetExecutableDir() {
+	wchar_t path[MAX_PATH];
+	GetModuleFileNameW(nullptr, path, MAX_PATH);
+	return std::filesystem::path(path).parent_path();
+}
 
 void GraphicsManager::DebugOutputFormatString(const char* format, ...)
 {
@@ -122,54 +130,22 @@ void GraphicsManager::Create2DIndexBuffer()
 
 void GraphicsManager::Load2DShaders()
 {
-	ID3DBlob* errorBlob = nullptr;
-
-	auto result = D3DCompileFromFile(
-		L"2DBasicVertexShader.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"BasicVS",
-		"vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		&vertexShaderBlob2D,
-		&errorBlob
+	auto result = D3DReadFileToBlob(
+		(GetExecutableDir() / "2DBasicVertexShader.cso").wstring().c_str(),
+		&vertexShaderBlob2D
 	);
-
 	if (FAILED(result))
 	{
-		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
-		{
-			Error::FatalError("3DShader file not found.");
-		}
-		else
-		{
-			std::string errorMessage;
-			errorMessage.resize(errorBlob->GetBufferSize());
-			std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
-			errorMessage += "\n";
-			Error::FatalError(errorMessage);
-		}
+		Error::FatalError("Failed to read 2D vertex shader file.");
 	}
 
-	result = D3DCompileFromFile(
-		L"2DBasicPixelShader.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"BasicPS",
-		"ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		&pixelShaderBlob2D,
-		&errorBlob
+	result = D3DReadFileToBlob(
+		(GetExecutableDir() / "2DBasicPixelShader.cso").wstring().c_str(),
+		&pixelShaderBlob2D
 	);
-
-	if (result != S_OK)
+	if (FAILED(result))
 	{
-		std::string errorMessage;
-		errorMessage.resize(errorBlob->GetBufferSize());
-		std::copy_n(static_cast<char*>(errorBlob->GetBufferPointer()), errorBlob->GetBufferSize(), errorMessage.begin());
-		Error::FatalError("Failed to compile 2Dpixel shader." + errorMessage);
+		Error::FatalError("Failed to read 2D pixel shader file.");
 	}
 }
 
@@ -362,7 +338,7 @@ void GraphicsManager::Create2DPipelineState()
 void GraphicsManager::Load3DShaders()
 {
 	auto result = D3DReadFileToBlob(
-		L"3DBasicVertexShader.cso",
+		(GetExecutableDir() / "3DBasicVertexShader.cso").wstring().c_str(),
 		&vertexShaderBlob3D
 	);
 
@@ -380,7 +356,7 @@ void GraphicsManager::Load3DShaders()
 
 	// Load precompiled pixel shader
 	result = D3DReadFileToBlob(
-		L"3DBasicPixelShader.cso",
+		(GetExecutableDir() / "3DBasicPixelShader.cso").wstring().c_str(),
 		&pixelShaderBlob3D
 	);
 
@@ -774,7 +750,7 @@ void GraphicsManager::CreatePeraPipelineState()
 	ComPtr<ID3DBlob> ps;
 
 	auto result = D3DReadFileToBlob(
-		L"peraVertex.cso",
+		(GetExecutableDir() / "peraVertex.cso").wstring().c_str(),
 		&vs
 	);
 
@@ -792,7 +768,7 @@ void GraphicsManager::CreatePeraPipelineState()
 
 	// Load precompiled pixel shader
 	result = D3DReadFileToBlob(
-		L"peraPixel.cso",
+		(GetExecutableDir() / "peraPixel.cso").wstring().c_str(),
 		&ps
 	);
 

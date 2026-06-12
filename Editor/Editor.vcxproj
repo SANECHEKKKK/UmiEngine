@@ -180,9 +180,6 @@
       <Project>{c4723276-ea9d-445a-b529-d23a26a7e61d}</Project>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="peraHeader.hlsli" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

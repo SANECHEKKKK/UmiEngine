@@ -29,8 +29,6 @@
     <ClCompile Include="Core\Graphics\DescriptorHeap.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsContext.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsManager.cpp" />
-    <ClCompile Include="Core\Graphics\RenderManager.cpp" />
-    <ClCompile Include="Core\Graphics\RenderManager.ixx" />
     <ClCompile Include="Core\Input\InputComponent.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

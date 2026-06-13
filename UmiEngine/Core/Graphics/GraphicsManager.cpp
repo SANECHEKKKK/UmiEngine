@@ -574,56 +574,73 @@ void GraphicsManager::Create3DPipelineState()
 }
 //------------------------------------------
 
-void GraphicsManager::CreateDepthStencilView()
+void GraphicsManager::CreateViewportTargets(uint32_t width, uint32_t height)
 {
-	D3D12_RESOURCE_DESC depthResDesc = {};
-	depthResDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	depthResDesc.Width = Settings::getResolution().width;
-	depthResDesc.Height = Settings::getResolution().height;
-	depthResDesc.DepthOrArraySize = 1;
-	depthResDesc.Format = DXGI_FORMAT_D32_FLOAT;
-	depthResDesc.SampleDesc.Count = 1;
-	depthResDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+	viewportWidth = width;
+	viewportHeight = height;
 
-	D3D12_HEAP_PROPERTIES depthHeapProp = {};
-	depthHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-	depthHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	depthHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
 
-	D3D12_CLEAR_VALUE depthClearValue = {};
-	depthClearValue.DepthStencil.Depth = 1.0f;
-	depthClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	// ---- color (peraResource) ----
+	D3D12_RESOURCE_DESC color{};
+	color.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	color.Width = width;
+	color.Height = height;
+	color.DepthOrArraySize = 1;
+	color.MipLevels = 1;
+	color.Format = viewportColorFormat;
+	color.SampleDesc.Count = 1;
+	color.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
-	auto result = device->CreateCommittedResource(
-		&depthHeapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&depthResDesc,
+	float cc[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
+	D3D12_CLEAR_VALUE colorClear = CD3DX12_CLEAR_VALUE(viewportColorFormat, cc);
+
+	if (device->CreateCommittedResource(
+		&defaultHeap, D3D12_HEAP_FLAG_NONE, &color,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		&colorClear, IID_PPV_ARGS(peraResource.ReleaseAndGetAddressOf())) != S_OK)
+		Error::FatalError("Failed to create viewport color target.");
+	peraResource->SetName(L"ViewportColor");
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtv{};
+	rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	rtv.Format = viewportColorFormat;
+	device->CreateRenderTargetView(
+		peraResource.Get(), &rtv,
+		peraRTVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	// ---- depth (depthStencilBuffer) ----
+	D3D12_RESOURCE_DESC depth{};
+	depth.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depth.Width = width;
+	depth.Height = height;
+	depth.DepthOrArraySize = 1;
+	depth.MipLevels = 1;
+	depth.Format = DXGI_FORMAT_D32_FLOAT;
+	depth.SampleDesc.Count = 1;
+	depth.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+	D3D12_CLEAR_VALUE depthClear{};
+	depthClear.Format = DXGI_FORMAT_D32_FLOAT;
+	depthClear.DepthStencil.Depth = 1.0f;
+
+	if (device->CreateCommittedResource(
+		&defaultHeap, D3D12_HEAP_FLAG_NONE, &depth,
 		D3D12_RESOURCE_STATE_DEPTH_WRITE,
-		&depthClearValue,
-		IID_PPV_ARGS(&depthStencilBuffer));
-	if (result != S_OK)
-	{
-		Error::FatalError("Failed to create depth buffer.");
-	}
+		&depthClear, IID_PPV_ARGS(depthStencilBuffer.ReleaseAndGetAddressOf())) != S_OK)
+		Error::FatalError("Failed to create viewport depth target.");
+	depthStencilBuffer->SetName(L"ViewportDepth");
 
-	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-	dsvHeapDesc.NumDescriptors = 1;
-	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	result = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap));
-	if (result != S_OK)
-	{
-		Error::FatalError("Failed to create depth stencil descriptor heap.");
-	}
-
-	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsv{};
+	dsv.Format = DXGI_FORMAT_D32_FLOAT;
+	dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	device->CreateDepthStencilView(
-		depthStencilBuffer.Get(),
-		&dsvDesc,
+		depthStencilBuffer.Get(), &dsv,
 		dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	// Scene pass uses these — panel-sized, not window-sized.
+	viewport = { 0.f, 0.f, (float)width, (float)height, 0.f, 1.f };
+	scissorRect = { 0, 0, (LONG)width, (LONG)height };
 }
 
 void GraphicsManager::CreateViewPort()
@@ -656,6 +673,64 @@ void GraphicsManager::CreateSamplerDescriptorHeap()
 	//	D3D12_FILTER_ANISOTROPIC,
 	//	D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
 	//	D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+}
+
+void GraphicsManager::CreatePeraRTVHeap()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC desc{};
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	desc.NumDescriptors = 1;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	if (device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&peraRTVHeap)) != S_OK)
+		Error::FatalError("Failed to create viewport RTV heap.");
+}
+
+void GraphicsManager::CreateDepthStencilView()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
+	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	if (device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap)) != S_OK)
+		Error::FatalError("Failed to create DSV heap.");
+}
+
+void GraphicsManager::CreateViewportSRV()
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srv.Format = viewportColorFormat;
+	srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srv.Texture2D.MipLevels = 1;
+	device->CreateShaderResourceView(peraResource.Get(), &srv, viewportSrvCpu);
+}
+
+void GraphicsManager::InitViewport()
+{
+	// Reserve a slot from the SAME allocator ImGui uses (the one in initInfo),
+	// so the font and the viewport texture never share a descriptor.
+	initInfo.imguiSrvAllocator.Alloc(&viewportSrvCpu, &viewportSrvGpu);
+	CreateViewportSRV();
+}
+
+void GraphicsManager::RequestViewportResize(uint32_t width, uint32_t height)
+{
+	if (width == 0 || height == 0) return;
+	if (width == viewportWidth && height == viewportHeight) return;
+	pendingViewportWidth = width;
+	pendingViewportHeight = height;
+	viewportResizePending = true;
+}
+
+void GraphicsManager::ApplyPendingViewportResize()
+{
+	if (!viewportResizePending) return;
+	viewportResizePending = false;
+
+	FlushGPU();
+	CreateViewportTargets(pendingViewportWidth, pendingViewportHeight);
+	CreateViewportSRV();
+
+	cameraManager.SetViewportSize(pendingViewportWidth, pendingViewportHeight);
 }
 
 void GraphicsManager::CreatePeraResource()
@@ -844,18 +919,6 @@ void GraphicsManager::CreatePeraPipelineState()
 	}
 }
 
-//--------------------IMPLEMENT--------------------
-void GraphicsManager::CreatePeraRTVHeap()
-{
-	
-}
-
-void GraphicsManager::CreatePeraSRVHeap()
-{
-
-}
-//-------------------------------------------------
-
 ImguiInitInfo* GraphicsManager::GetImguiInitInfo()
 {
 	constexpr uint32_t SRV_HEAP_SIZE = 64;
@@ -868,12 +931,13 @@ ImguiInitInfo* GraphicsManager::GetImguiInitInfo()
 
 	imguiSrvAllocator.Init(device.Get(), imguiSRVDescriptorHeap.Get(), SRV_HEAP_SIZE);
 
-	// Init ImGui
 	initInfo.device = device.Get();
 	initInfo.commandQueue = commandQueue.Get();
 	initInfo.commandList = commandList.Get();
 	initInfo.imguiSRVDescriptorHeap = imguiSRVDescriptorHeap.Get();
 	initInfo.imguiSrvAllocator = imguiSrvAllocator;
+
+	InitViewport();
 
 	return &initInfo;
 }
@@ -887,16 +951,13 @@ void GraphicsManager::Resize(int width, int height)
 
 	for (uint32_t i = 0; i < 2; ++i)
 		backBuffers[i].Reset();
-	//depthStencilBuffer.Reset();
 
-	// 3. Resize the swap chain (0 = keep count/format)
 	DXGI_SWAP_CHAIN_DESC1 desc{};
 	swapChain->GetDesc1(&desc);
 	auto result = swapChain->ResizeBuffers(
 		2, width, height,
 		desc.Format, desc.Flags);
 
-	// 4. Recreate RTVs
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
 		rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	for (uint32_t i = 0; i < 2; ++i)
@@ -910,49 +971,44 @@ void GraphicsManager::Resize(int width, int height)
 		rtvHandle.Offset(1, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 	}
 
-
-	// 6. Viewport + scissor
-	viewport = { 0.f, 0.f, (float)width, (float)height, 0.f, 1.f };
-	scissorRect = { 0, 0, (LONG)width, (LONG)height };
 }
 
 void GraphicsManager::FrameStart()
 {
+	ApplyPendingViewportResize();
+
 	bbIdx = swapChain->GetCurrentBackBufferIndex();
 
-	D3D12_RESOURCE_BARRIER BarrierDesc = {};
-	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	BarrierDesc.Transition.pResource = backBuffers[bbIdx].Get();
-	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	commandList->ResourceBarrier(1, &BarrierDesc);
-
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+	auto toRT = CD3DX12_RESOURCE_BARRIER::Transition(
 		peraResource.Get(),
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 		D3D12_RESOURCE_STATE_RENDER_TARGET);
+	commandList->ResourceBarrier(1, &toRT);
 
-	commandList->ResourceBarrier(1, &barrier);
-
-	//レンダーターゲットを指定
 	auto rtvH = peraRTVHeap->GetCPUDescriptorHandleForHeapStart();
-	//rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	auto dsvH = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	commandList->OMSetRenderTargets(1, &rtvH, false, &dsvH);
 
-	auto dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-	//画面クリア
-	float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };//白
+	commandList->ClearDepthStencilView(dsvH, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	float clearColor[] = { 0.10f, 0.10f, 0.12f, 1.0f };
 	commandList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
-
 }
 
 void GraphicsManager::StartImguiFrame()
 {
+	auto toRT = CD3DX12_RESOURCE_BARRIER::Transition(
+		backBuffers[bbIdx].Get(),
+		D3D12_RESOURCE_STATE_PRESENT,
+		D3D12_RESOURCE_STATE_RENDER_TARGET);
+	commandList->ResourceBarrier(1, &toRT);
+
+	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	commandList->OMSetRenderTargets(1, &rtvH, false, nullptr);
+
+	float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	commandList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+
 	ID3D12DescriptorHeap* heaps[] = { imguiSRVDescriptorHeap.Get() };
 	commandList->SetDescriptorHeaps(1, heaps);
 }
@@ -1052,47 +1108,16 @@ void GraphicsManager::Render3D()
 
 void GraphicsManager::Render()
 {
-	//-------------Camera Update------------
 	cameraManager.Update();
-	//--------------------------------------
 
-	//------------------2D------------------
 	Render2D();
-	//--------------------------------------
-
-	//------------------3D------------------
 	Render3D();
-	//--------------------------------------
 
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+	auto toSRV = CD3DX12_RESOURCE_BARRIER::Transition(
 		peraResource.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-	commandList->ResourceBarrier(1, &barrier);
-
-	auto backBufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
-		backBuffers[bbIdx].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET,
-		D3D12_RESOURCE_STATE_PRESENT);
-	commandList->ResourceBarrier(1, &backBufferBarrier);
-
-	auto rtvH = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	commandList->OMSetRenderTargets(1, &rtvH, false, nullptr);
-
-	commandList->SetPipelineState(pipelinestatePera.Get());
-	commandList->SetGraphicsRootSignature(rootsignaturePera.Get());
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-
-	commandList->SetDescriptorHeaps(1, peraSRVHeap.GetAddressOf());
-	auto handle = peraSRVHeap->GetGPUDescriptorHandleForHeapStart();
-
-	commandList->SetGraphicsRootDescriptorTable(0, handle);
-
-	commandList->IASetVertexBuffers(0, 1, &peraVBV);
-
-	commandList->DrawInstanced(4, 1, 0, 0);
+	commandList->ResourceBarrier(1, &toSRV);
 }
 
 void GraphicsManager::FrameEnd()
@@ -1261,9 +1286,15 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 		Error::FatalError("Failed to create fence.");
 	}
 
+	//CreateDepthStencilView();
+	//CreateViewPort();
+	//CreateScissorRect();
+	CreatePeraRTVHeap();
 	CreateDepthStencilView();
-	CreateViewPort();
-	CreateScissorRect();
+	CreateViewportTargets(Settings::getResolution().width,
+		Settings::getResolution().height);
+	cameraManager.SetViewportSize(Settings::getResolution().width,
+		Settings::getResolution().height);
 	CreateSamplerDescriptorHeap();
 
 	//------------------2D------------------
@@ -1275,8 +1306,8 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	//--------------------------------------
 
 	//-----------------PERA-----------------
-	CreatePeraResource();
-	CreatePeraPipelineState();
+	//CreatePeraResource();
+	//CreatePeraPipelineState();
 	//--------------------------------------
 
 	graphicsContext.device = device.Get();

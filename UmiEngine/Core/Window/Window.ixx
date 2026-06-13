@@ -2,6 +2,7 @@ module;
 #include <windows.h>
 #include <string>
 #include <memory>
+#include <functional>
 
 #include <EngineApi/EngineApi.h>
 export module Window;
@@ -13,6 +14,10 @@ export namespace Umi
 {
 	class ENGINE_API Window
 	{
+	public:
+		using MessageHook = std::function<bool(HWND, UINT, WPARAM, LPARAM)>;
+		void SetMessageHook(MessageHook hook) { messageHook = std::move(hook); }
+
 	private:
 		static LRESULT CALLBACK WndProcSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 		static LRESULT CALLBACK WndProcThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -24,6 +29,8 @@ export namespace Umi
 		static constexpr const char* windowClassName = "MyWindowClass";
 
 		EngineContext& engineContext;
+
+		MessageHook messageHook;
 
 	public:
 		bool ProcessMessages();

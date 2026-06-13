@@ -1,6 +1,7 @@
 module;
 #include <windows.h>
 #include <memory>
+#include <ImGui/imgui_impl_win32.h>
 module Window;
 
 //#include "UmiEventManager.h"
@@ -100,21 +101,16 @@ LRESULT CALLBACK Window::WndProcThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 		: DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-extern LRESULT ImGui_ImplWin32_WndProcHandler(
-	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 LRESULT Window::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	engineContext.inputManager.UpdateRawInput(msg, wParam, lParam);
 
-	//if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-		//return true;
+	if (messageHook && messageHook(hWnd, msg, wParam, lParam))
+		return true;
 
 	switch (msg) {
 	case WM_SIZE:
-		//Implement resizing
 		return 0;
-
 	case WM_CLOSE:
 		DestroyWindow(hWnd);
 		return 0;

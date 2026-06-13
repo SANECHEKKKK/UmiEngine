@@ -164,6 +164,8 @@
     <ClCompile Include="src\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\InspectorWindow\InspectorWindow.cpp" />
     <ClCompile Include="src\InspectorWindow\InspectorWindow.ixx" />
+    <ClCompile Include="src\ViewPortWindow\ViewPort.cpp" />
+    <ClCompile Include="src\ViewPortWindow\ViewPort.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ImGui\imgui_impl_dx12.h" />

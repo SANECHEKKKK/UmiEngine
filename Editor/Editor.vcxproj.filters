@@ -78,6 +78,12 @@
     <ClCompile Include="Assets\Scripts\CameraMove.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ViewPortWindow\ViewPort.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ViewPortWindow\ViewPort.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ImGui\imgui_impl_win32.h">

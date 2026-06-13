@@ -9,6 +9,8 @@ module;
 #include <ImGui/imgui_impl_win32.h>
 #include <ImGui/imgui_impl_dx12.h>
 //--------------------------------//
+
+#include <cstdint>
 module ImGuiManager;
 
 import GraphicsManager;
@@ -63,6 +65,7 @@ void ImGuiManager::Render()
 
 	inspectorWindow.Draw();
 	hierarchyWindow.Draw();
+	DrawViewportWindow();
 
 	ImGui::Render();
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
@@ -71,7 +74,23 @@ void ImGuiManager::Render()
 	ImGui::RenderPlatformWindowsDefault();
 }
 
-ImGuiManager::ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, Registry& registry, EditorContext& editorContext) : registry(registry), editorContext(editorContext)
+void ImGuiManager::DrawViewportWindow()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("Viewport");
+
+	ImVec2 avail = ImGui::GetContentRegionAvail();
+	uint32_t w = (uint32_t)(avail.x > 1.0f ? avail.x : 1.0f);
+	uint32_t h = (uint32_t)(avail.y > 1.0f ? avail.y : 1.0f);
+	graphics.RequestViewportResize(w, h);
+
+	ImGui::Image((ImTextureID)graphics.GetViewportTextureHandle().ptr, avail);
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+
+ImGuiManager::ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, Registry& registry, EditorContext& editorContext, GraphicsManager& graphics) : registry(registry), editorContext(editorContext), graphics(graphics)
 {
 	commandList = initInfo->commandList;
 

@@ -221,6 +221,24 @@ export namespace Umi
 		//-----------------------------------------
 #pragma endregion 3D
 
+#pragma region ImGui
+		//-------------EDITOR_VIEWPORT-------------
+		D3D12_CPU_DESCRIPTOR_HANDLE viewportSrvCpu{};
+		D3D12_GPU_DESCRIPTOR_HANDLE viewportSrvGpu{};
+		uint32_t viewportWidth = defaultWindowWidth;
+		uint32_t viewportHeight = defaultWindowHeight;
+		uint32_t pendingViewportWidth = 0;
+		uint32_t pendingViewportHeight = 0;
+		bool     viewportResizePending = false;
+		static constexpr DXGI_FORMAT viewportColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+		void CreateViewportTargets(uint32_t width, uint32_t height);
+		void CreateViewportSRV();
+		void InitViewport();
+		void ApplyPendingViewportResize();
+		//-----------------------------------------
+#pragma endregion ImGui
+
 		UINT bbIdx = 0;
 
 		CameraManager cameraManager;
@@ -269,6 +287,10 @@ export namespace Umi
 		void FlushGPU();
 
 	public:
+
+		D3D12_GPU_DESCRIPTOR_HANDLE GetViewportTextureHandle() const noexcept { return viewportSrvGpu; }
+		void RequestViewportResize(uint32_t width, uint32_t height);
+
 		ImguiInitInfo* GetImguiInitInfo();
 
 		void Resize(int width, int height);

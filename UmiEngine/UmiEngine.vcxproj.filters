@@ -90,12 +90,6 @@
     <ClCompile Include="Core\Graphics\GraphicsContext.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core\Graphics\RenderManager.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\Graphics\RenderManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Error\Error.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>

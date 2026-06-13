@@ -12,20 +12,19 @@ import Settings;
 
 void CameraManager::Update()
 {
+	const float w = static_cast<float>(viewportWidth);
+	const float h = static_cast<float>(viewportHeight);
+	const float aspect = (h > 0.0f) ? (w / h) : 1.0f;
+
 	for (auto e : registry.View<Camera, Transform>())
 	{
-
 		auto& camera = registry.GetComponent<Camera>(e);
 		auto& transform = registry.GetComponent<Transform>(e);
 
 		//----------------------------2D-----------------------------
 		{
 			camera.projectionMatrix2D = DirectX::XMMatrixOrthographicLH(
-				Settings::getResolution().width,
-				Settings::getResolution().height,
-				camera.nearClip,
-				camera.farClip
-			);
+				w, h, camera.nearClip, camera.farClip);
 
 			DirectX::XMFLOAT3 eye(transform.pos.x, transform.pos.y, -1);
 			DirectX::XMFLOAT3 target(transform.pos.x, transform.pos.y, 0.0f);
@@ -33,8 +32,7 @@ void CameraManager::Update()
 			camera.viewMatrix2D = DirectX::XMMatrixLookAtLH(
 				DirectX::XMLoadFloat3(&eye),
 				DirectX::XMLoadFloat3(&target),
-				DirectX::XMLoadFloat3(&up)
-			);
+				DirectX::XMLoadFloat3(&up));
 		}
 		//-----------------------------------------------------------
 
@@ -42,18 +40,13 @@ void CameraManager::Update()
 		{
 			camera.projectionMatrix3D = DirectX::XMMatrixPerspectiveFovLH(
 				DirectX::XMConvertToRadians(camera.fov),
-				Settings::getResolution().width / static_cast<float>(Settings::getResolution().height),
+				aspect,
 				camera.nearClip,
-				camera.farClip
-			);
+				camera.farClip);
 
 			DirectX::XMMATRIX rotMatrix = DirectX::XMMatrixRotationRollPitchYaw(
-				transform.rot.x,  // pitch
-				transform.rot.y,  // yaw
-				transform.rot.z   // roll
-			);
+				transform.rot.x, transform.rot.y, transform.rot.z);
 
-			// Extract axes from the rotation matrix
 			DirectX::XMVECTOR forward = DirectX::XMVector3TransformNormal(
 				DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotMatrix);
 			DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(
@@ -65,24 +58,14 @@ void CameraManager::Update()
 			camera.viewMatrix3D = DirectX::XMMatrixLookToLH(eyePos, forward, up);
 		}
 		//-----------------------------------------------------------
-
-		//if (Keyboard::IsKeyDown(KK_W))
-		//{
-		//	transform.pos.z += 0.1f;
-		//}
-		//if (Keyboard::IsKeyDown(KK_S))
-		//{
-		//	transform.pos.z -= 0.1f;
-		//}
-		//if (Keyboard::IsKeyDown(KK_A))
-		//{
-		//	transform.pos.x -= 0.1f;
-		//}
-		//if (Keyboard::IsKeyDown(KK_D))
-		//{
-		//	transform.pos.x += 0.1f;
-		//}
 	}
+}
+
+void CameraManager::SetViewportSize(uint32_t width, uint32_t height)
+{
+	if (width == 0 || height == 0) return;
+	viewportWidth = width;
+	viewportHeight = height;
 }
 
 Camera* CameraManager::GetMainCamera()

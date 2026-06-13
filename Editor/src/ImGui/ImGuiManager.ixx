@@ -17,21 +17,21 @@ export namespace Umi
 {
 	class ImGuiManager
 	{
-	private:
-		Registry& registry;
-		EditorContext& editorContext;
+    private:
+        Registry& registry;
+        EditorContext& editorContext;
+        GraphicsManager& graphics;
 
-		HierarchyWindow hierarchyWindow{ registry, editorContext };
-		InspectorWindow inspectorWindow{ registry, editorContext };
+        HierarchyWindow hierarchyWindow{ registry, editorContext };
+        InspectorWindow inspectorWindow{ registry, editorContext };
+        ID3D12GraphicsCommandList* commandList = nullptr;
 
-		ID3D12GraphicsCommandList* commandList = nullptr;
-
-		void RenderDockingSpace();
-	public:
-		void Render();
-
-		//ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo);
-		ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, Registry& registry, EditorContext& editorContext);
-		~ImGuiManager();
+        void RenderDockingSpace();
+        void DrawViewportWindow();
+    public:
+        void Render();
+        ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, Registry& registry,
+            EditorContext& editorContext, GraphicsManager& graphics);
+        ~ImGuiManager();
 	};
 }

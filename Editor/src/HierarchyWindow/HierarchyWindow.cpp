@@ -24,6 +24,9 @@ void Umi::HierarchyWindow::Draw()
 
 	for (auto entity : registry.View<ID>())
 	{
+		if (static_cast<int>(entity) == 0)
+			continue;
+
 		auto& id = registry.GetComponent<ID>(entity);
 		bool isSelected = (editorContext.selectedEntity == entity);
 		bool isRenaming = (entityToRename == entity && renamingActive);

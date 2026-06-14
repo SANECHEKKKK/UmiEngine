@@ -5,11 +5,12 @@ export module ImGuiManager;
 
 import Registry;
 import EditorContext;
+import EngineContext;     // NEW
 
 import InspectorWindow;
-
 import GraphicsManager;
 import HierarchyWindow;
+import AssetBrowser;
 
 import Entity;
 
@@ -18,19 +19,23 @@ export namespace Umi
 	class ImGuiManager
 	{
     private:
-        Registry& registry;
+        EngineContext& engineContext;
         EditorContext& editorContext;
         GraphicsManager& graphics;
 
-        HierarchyWindow hierarchyWindow{ registry, editorContext };
-        InspectorWindow inspectorWindow{ registry, editorContext };
+        HierarchyWindow  hierarchyWindow{ engineContext.registry, editorContext };
+        InspectorWindow  inspectorWindow{ engineContext, editorContext };
+        AssetBrowser     assetBrowser{ engineContext, editorContext };
+
         ID3D12GraphicsCommandList* commandList = nullptr;
 
         void RenderDockingSpace();
         void DrawViewportWindow();
     public:
         void Render();
-        ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, Registry& registry,
+        void ProcessDeferred();
+
+        ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, EngineContext& engineContext,
             EditorContext& editorContext, GraphicsManager& graphics);
         ~ImGuiManager();
 	};

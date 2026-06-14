@@ -29,7 +29,7 @@ using namespace Umi;
 
 Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
-	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext.registry, editorContext, window.GetGraphics()),
+	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics()),
 	textureManager(window.GetGraphics().GetGraphicsContext()),
 	modelManager(textureManager, window.GetGraphics().GetGraphicsContext())
 {
@@ -56,16 +56,16 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
 	////auto& model = registry.GetComponent<Model>(b);
 	////modelManager.GetModelData(model.id).materials[0].baseColor[1] = { 1.0f };
 
-	//auto a = registry.CreateEntity();
-	//registry.AddComponent<Transform>(a, Transform());
-	//registry.AddComponent<Camera>(a, Camera());
-	//scriptManager.RegisterScript<CameraMove>("CameraMove");
-	//auto script = scriptManager.CreateScript("CameraMove");
-	//script->Bind(a, &engineContext);
-	//Script cameraMoveScript;
-	//cameraMoveScript.scripts.push_back(std::move(script));
-	//registry.AddComponent<Script>(a, std::move(cameraMoveScript));
-	//registry.AddComponent<ID>(a, ID{.name = "JOPA"});
+	auto a = registry.CreateEntity();
+	registry.AddComponent<Transform>(a, Transform());
+	registry.AddComponent<Camera>(a, Camera());
+	scriptManager.RegisterScript<CameraMove>("CameraMove");
+	auto script = scriptManager.CreateScript("CameraMove");
+	script->Bind(a, &engineContext);
+	Script cameraMoveScript;
+	cameraMoveScript.scripts.push_back(std::move(script));
+	registry.AddComponent<Script>(a, std::move(cameraMoveScript));
+	registry.AddComponent<ID>(a, ID{.name = "CAMERA"});
 
 }
 
@@ -141,8 +141,9 @@ void Editor::Run()
 
 void Editor::FrameTick(float deltaTime, float& accumulator)
 {
-	//HandleSignal(HandleInput());
+	imGuiManager.ProcessDeferred();
 
+	//HandleSignal(HandleInput());
 
 	accumulator += deltaTime;
 	//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);

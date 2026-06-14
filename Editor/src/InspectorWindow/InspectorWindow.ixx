@@ -1,19 +1,28 @@
+module;
+#include <string>
+#include <vector>
 export module InspectorWindow;
 
-import Registry;
+import EngineContext;
 import EditorContext;
+import Entity;
+
 
 export namespace Umi
 {
 	class InspectorWindow
 	{
 	private:
+		EngineContext& engineContext;
 		EditorContext& editorContext;
-		Registry& registry;
+
+		struct PendingModelAssign { Entity entity; std::string path; };
+		std::vector<PendingModelAssign> pendingAssigns;
 
 	public:
 		void Draw();
+		void ProcessPending();
 
-		InspectorWindow(Registry& registry, EditorContext& context);
+		InspectorWindow(EngineContext& engineContext, EditorContext& context);
 	};
 }

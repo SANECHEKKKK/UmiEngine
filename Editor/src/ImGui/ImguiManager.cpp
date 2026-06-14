@@ -14,6 +14,7 @@ module;
 module ImGuiManager;
 
 import GraphicsManager;
+import EngineContext;
 //import Registry;
 //import EditorContext;
 
@@ -65,6 +66,7 @@ void ImGuiManager::Render()
 
 	inspectorWindow.Draw();
 	hierarchyWindow.Draw();
+	assetBrowser.Draw();
 	DrawViewportWindow();
 
 	ImGui::Render();
@@ -72,6 +74,12 @@ void ImGuiManager::Render()
 
 	ImGui::UpdatePlatformWindows();
 	ImGui::RenderPlatformWindowsDefault();
+}
+
+void ImGuiManager::ProcessDeferred()
+{
+	assetBrowser.ProcessPending();
+	inspectorWindow.ProcessPending();
 }
 
 void ImGuiManager::DrawViewportWindow()
@@ -90,7 +98,9 @@ void ImGuiManager::DrawViewportWindow()
 	ImGui::PopStyleVar();
 }
 
-ImGuiManager::ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, Registry& registry, EditorContext& editorContext, GraphicsManager& graphics) : registry(registry), editorContext(editorContext), graphics(graphics)
+ImGuiManager::ImGuiManager(HWND hwnd, ImguiInitInfo* initInfo, EngineContext& engineContext,
+	EditorContext& editorContext, GraphicsManager& graphics)
+	: engineContext(engineContext), editorContext(editorContext), graphics(graphics)
 {
 	commandList = initInfo->commandList;
 

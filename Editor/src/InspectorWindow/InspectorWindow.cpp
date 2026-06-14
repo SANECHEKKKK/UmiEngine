@@ -3,15 +3,35 @@ module;
 #include <string>
 module InspectorWindow;
 
+import Entity;
 import Registry;
 import EditorContext;
 import Transform;
-import Entity;
+import Model;
+import Texture;
 
 using namespace Umi;
 
+void InspectorWindow::ProcessPending()
+{
+    if (pendingAssigns.empty()) return;
+
+    auto& registry = engineContext.registry;
+    for (auto& a : pendingAssigns)
+    {
+        if (!registry.HasComponent<Model>(a.entity))
+            registry.AddComponent<Model>(a.entity, Model{});
+
+        registry.GetComponent<Model>(a.entity).id =
+            engineContext.modelManager.LoadModel(a.path);
+    }
+    pendingAssigns.clear();
+}
+
 void InspectorWindow::Draw()
 {
+    auto& registry = engineContext.registry;
+
     ImGui::Begin("Inspector");
 
     Entity entity = editorContext.selectedEntity;
@@ -34,18 +54,57 @@ void InspectorWindow::Draw()
             ImGui::DragFloat3("Scale", &transform.scale.x, 0.1f);
         }
     }
+    
+    if (registry.HasComponent<Model>(entity))
+    {
+        auto& model = registry.GetComponent<Model>(entity);
 
-    //if (registry.HasComponent<ModelComponent>(entity))
-    //{
-    //    auto& model = registry.GetComponent<ModelComponent>(entity);
+        if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            std::string slot = (model.id == INVALID_MODELID)
+                ? "Drop model here"
+                : engineContext.modelManager.GetModelData(model.id).filePath;
 
-    //    if (ImGui::CollapsingHeader(("Model##" + std::to_string(static_cast<int>(entity))).c_str()))
-    //    {
-    //        ImGui::Text("Model details here...");
-    //    }
-    //}
+            ImGui::Button(slot.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
+
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("MODEL_ASSET"))
+                {
+                    const char* path = static_cast<const char*>(p->Data);
+                    pendingAssigns.push_back({ entity, std::string(path) });
+                }
+                ImGui::EndDragDropTarget();
+            }
+        }
+    }
+
+
+
+    if (ImGui::Button("Add Component", ImVec2(ImVec2(-FLT_MIN, 0.0f))))
+    {
+        ImGui::OpenPopup("add_component_popup");
+    }
+
+    if (ImGui::BeginPopup("add_component_popup"))
+    {
+        if (!registry.HasComponent<Transform>(entity) && ImGui::MenuItem("Transform"))
+            registry.AddComponent<Transform>(entity, Transform{});
+
+        if (!registry.HasComponent<Model>(entity) && ImGui::MenuItem("Model"))
+			registry.AddComponent<Model>(entity, Model{});
+		
+        if (!registry.HasComponent<Texture>(entity) && ImGui::MenuItem("Texture"))
+			registry.AddComponent<Texture>(entity, Texture{});
+
+        //if (!registry.HasComponent<Camera>(entity) && ImGui::MenuItem("Camera"))
+            //registry.AddComponent<Camera>(entity, Camera{});
+
+        ImGui::EndPopup();
+    }
+
 
     ImGui::End();
 }
 
-InspectorWindow::InspectorWindow(Registry& registry, EditorContext& context) : registry(registry), editorContext(context) {}
+InspectorWindow::InspectorWindow(EngineContext& engineContext, EditorContext& context) : engineContext(engineContext), editorContext(context) {}

@@ -1,72 +1,38 @@
 module;
 #include <filesystem>
-#include <functional>
 #include <string>
 #include <vector>
-
-#include <ImGui/imgui.h>
 export module AssetBrowser;
+
+import EngineContext;
+import EditorContext;
 
 export namespace Umi
 {
-    enum class AssetType { Unknown, Texture, Mesh, Audio, Script, Scene, Folder };
+	class AssetBrowser
+	{
+	private:
+		enum class AssetType { Folder, Texture, Model, Other };
 
-    struct AssetEntry
-    {
-        std::filesystem::path path;
-        std::string name;
-        AssetType type;
-        bool isDirectory;
-        ImTextureID thumbnail;
-    };
+		EngineContext& engineContext;
+		EditorContext& editorContext;
 
-    class AssetBrowser
-    {
-    public:
-        explicit AssetBrowser(const std::filesystem::path& rootPath);
+		std::filesystem::path rootPath;
+		std::filesystem::path currentPath;
+		char searchBuffer[128]{};
 
-        void Draw();
+		struct PendingLoad { std::string path; std::string name; AssetType type; };
+		std::vector<PendingLoad> pendingLoads;
 
-        // Plug in your texture loader here — return nullptr if no thumbnail available
-        std::function<ImTextureID(const std::filesystem::path&)> onRequestThumbnail;
+		AssetType Classify(const std::filesystem::path& p) const;
+		void Activate(const std::filesystem::path& fsPath, const std::string& path,
+			const std::string& name, AssetType type);
 
-        static constexpr const char* DRAG_DROP_PAYLOAD = "ASSET_PATH";
+	public:
+		void Draw();
+		void ProcessPending();   // call only when the command list is NOT mid-frame
 
-    private:
-        void DrawToolbar();
-        void DrawFolderTree(const std::filesystem::path& path);
-        void DrawContent();
-        void DrawGridView();
-        void DrawListView();
-        void DrawContextMenu(AssetEntry* entry); // nullptr = background context menu
-
-        void NavigateTo(const std::filesystem::path& path);
-        void RefreshDirectory();
-        void ApplyFilter();
-
-        AssetType       GetAssetType(const std::filesystem::path& path);
-        ImTextureID     GetOrLoadThumbnail(AssetEntry& entry);
-        const char* GetAssetTypeIcon(AssetType type);
-        const char* GetAssetTypeName(AssetType type);
-
-    private:
-        enum class ViewMode { Grid, List };
-
-        std::filesystem::path            rootPath;
-        std::filesystem::path            currentPath;
-        std::vector<std::filesystem::path> navHistory;
-        int                              historyIndex = -1;
-
-        std::vector<AssetEntry>          entries;
-        std::vector<AssetEntry*>         filteredEntries;
-
-        char        searchBuffer[256] = {};
-        ViewMode    viewMode = ViewMode::Grid;
-        float       thumbnailSize = 64.0f;
-
-        AssetEntry* selectedEntry = nullptr;
-        AssetEntry* renamingEntry = nullptr;
-        char        renameBuffer[256] = {};
-        bool        renamingJustStarted = false;
-    };
+		AssetBrowser(EngineContext& engineContext, EditorContext& editorContext,
+			std::filesystem::path root = "Assets");
+	};
 }

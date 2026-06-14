@@ -1042,6 +1042,10 @@ void GraphicsManager::Render2D()
 		auto& texture = engineContext.registry.GetComponent<Texture>(e);
 		auto& transform = engineContext.registry.GetComponent<Transform>(e);
 
+
+		if (texture.id == INVALID_TEXTUREID) continue;//テクスチャがまだないなら描画しない
+
+
 		auto& texData = engineContext.textureManager.GetTextureData(texture.id);
 		auto texHandle = descriptorHeap2D.GetGPU(texData.descriptorHeapIndex);
 
@@ -1082,6 +1086,11 @@ void GraphicsManager::Render3D()
 	{
 		auto& model = engineContext.registry.GetComponent<Model>(e);
 		auto& transform = engineContext.registry.GetComponent<Transform>(e);
+
+
+		if (model.id == INVALID_MODELID)
+			continue;
+
 
 		auto& modelData = engineContext.modelManager.GetModelData(model.id);
 

@@ -1,6 +1,9 @@
-#include <Input/Keyboard.h>
+module;
 #include <iostream>
 #include <conio.h>
+#include <memory>
+#include <windows.h>
+module Keyboard;
 
 using namespace Umi;
 

@@ -1,4 +1,4 @@
-#include <Input/Mouse.h>
+module Mouse;
 
 using namespace Umi;
 
@@ -24,12 +24,12 @@ void Mouse::Update() noexcept
 //	return y;
 //}
 
-bool Mouse::LeftIsPressed() const noexcept
+bool Mouse::LeftIsPressed() noexcept
 {
 	return leftIsPressed;
 }
 
-bool Mouse::RightIsPressed() const noexcept
+bool Mouse::RightIsPressed() noexcept
 {
 	return rightIsPressed;
 }

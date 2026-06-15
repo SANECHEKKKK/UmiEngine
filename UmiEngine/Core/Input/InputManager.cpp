@@ -1,5 +1,8 @@
-#include <Input/InputManager.h>
-#include <Settings/Settings.h>
+//#include <Input/InputManager.h>
+//#include <Settings/Settings.h>
+module;
+#include <windows.h>
+module InputManager;
 
 using namespace Umi;
 
@@ -20,10 +23,10 @@ void InputManager::UpdateRawInput(UINT msg, WPARAM wParam, LPARAM lParam)
 		int xPos = static_cast<short>(LOWORD(lParam));
 		int yPos = static_cast<short>(HIWORD(lParam));
 
-		if (pt.x >= 0 && pt.x < settings.getResolution().width && pt.y >= 0 && pt.y < settings.getResolution().height)
-		{
-			mouse.OnMouseMove(xPos, yPos);
-		}
+		//if (pt.x >= 0 && pt.x < settings.getResolution().width && pt.y >= 0 && pt.y < settings.getResolution().height)
+		//{
+			//mouse.OnMouseMove(xPos, yPos);
+		//}
 		//else
 		//{
 		//	if (wParam & (MK_LBUTTON | MK_RBUTTON))

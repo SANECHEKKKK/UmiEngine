@@ -1,340 +1,174 @@
-#include "Editor.h"
-
+module;
+#define NOMINMAX
 #include <windows.h>
-#include <Time/Time.h>
-#include <Signal/Signal.h>
-#include <GameState/GameState.h>
-#include <Graphics/Graphics.h>
+#include <algorithm>
+#include <memory>
 
-#include <Tag/TagComponent.h>
+#include <ImGui/imgui_impl_win32.h>
 
-//-------------States--------------//
-#include <LoadingState/LoadingState.h>
-#include <MainMenuState/MainMenuState.h>
-//---------------------------------//
-
-//----------SYSTEM EVENTS----------//
-#include <Events/ResolutionChange/ResolutionChange.h>
-#include <Events/LoadState/LoadState.h>
-#include <Events/OpenSettings/OpenSettings.h>
-#include <Events/QuitGame/QuitGame.h>
-#include <Events/ExitToMainMenu/ExitToMainMenu.h>
-//--------------------------------//
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #pragma comment (lib, "winmm.lib")
+module Editor;
+
+
+import Time;
+import Settings;
+import EditorContext;
+import TextureManager;
+import Transform;
+import Camera;
+import Keyboard;
+import CameraMove;
+import Script;
+import ID;
 
 using namespace Umi;
 
+
 Editor::Editor(HINSTANCE hInstance, const char* title)
 	: window(hInstance, title, engineContext),
-	renderer(&window.GetGraphics(), engineContext),
-	imGuiManager(window.GetHWND(), window.GetGraphics().DirectXGetDevice(), window.GetGraphics().DirectXGetDeviceContext(), engineContext.registry, editorContext),
-	modelManager(window.GetGraphics().DirectXGetDevice(), window.GetGraphics().DirectXGetDeviceContext())
+	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics()),
+	textureManager(window.GetGraphics().GetGraphicsContext()),
+	modelManager(textureManager, window.GetGraphics().GetGraphicsContext())
 {
-	loadManager.LoadThread(bootPrefabs);
-
-	CreateStateDescription<MainMenuState>(MainMenuStateID,
-		{
-			.folders = { "MainMenu" }
+	window.SetMessageHook([](HWND h, UINT m, WPARAM w, LPARAM l) {
+		return ImGui_ImplWin32_WndProcHandler(h, m, w, l) != 0;
 		});
 
-	gameStack.reserve(10);
-	LoadState(MainMenuStateID);
-	
-	ChangeResolution(1280, 720);
-}
+	//auto e = registry.CreateEntity();
+	//auto textureid = textureManager.LoadTexture2D("Assets/Textures/MainMenu/TitleScreenBG.png");
+	//registry.AddComponent<Texture>(e, { textureid });
+	//registry.AddComponent<Transform>(e, Transform());
+	//registry.AddComponent<ID>(e, ID());
+	////auto& transform = registry.GetComponent<Transform>(e);	
 
-Editor::~Editor() = default;
+	//auto b = registry.CreateEntity();
+	//auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
+	////auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
+	//registry.AddComponent<Model>(b, { modelid });
+	//registry.AddComponent<Transform>(b, Transform());
+	//auto& transform = registry.GetComponent<Transform>(b);
+	//transform.pos = { 0, 0, 0 };
+	//transform.scale = { 1.0f, 1.0f, 1.0f };
+	//registry.AddComponent<ID>(b, ID{.name = "PISDA"});
+	////auto& model = registry.GetComponent<Model>(b);
+	////modelManager.GetModelData(model.id).materials[0].baseColor[1] = { 1.0f };
+
+	auto a = registry.CreateEntity();
+	registry.AddComponent<Transform>(a, Transform());
+	registry.AddComponent<Camera>(a, Camera());
+	scriptManager.RegisterScript<CameraMove>("CameraMove");
+	auto script = scriptManager.CreateScript("CameraMove");
+	script->Bind(a, &engineContext);
+	Script cameraMoveScript;
+	cameraMoveScript.scripts.push_back(std::move(script));
+	registry.AddComponent<Script>(a, std::move(cameraMoveScript));
+	registry.AddComponent<ID>(a, ID{.name = "CAMERA"});
+
+}
 
 void Editor::Run()
 {
-	MSG msg;
-
+	LARGE_INTEGER frequency, lastTime, currentTime;
 	QueryPerformanceFrequency(&frequency);
 	QueryPerformanceCounter(&lastTime);
 
-#if _DEBUG
-	QueryPerformanceCounter(&debugTimeLast);
-#endif // !_DEBUG
+	float accumulator = 0.0f;
 
-	LoadState(MainMenuStateID);
-
-	do {
-		if (!bootPrefabsLoaded)
-		{
-			loadManager.Update();
-			if (loadManager.IsFinished())
-				bootPrefabsLoaded = true;
-		}
-
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	MSG msg = {};
+	while (isRunning)
+	{
+		// ── 1. Drain the ENTIRE OS message queue before touching the game ──
+		//    Draining one-per-frame can stall the loop under heavy WM traffic.
+		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			if (msg.message == WM_QUIT)
-			{
 				RequestExit();
-			}
 			else
 			{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
 		}
-		else
+
+		if (!isRunning)
+			break;
+
+		// ── 2. Timing ──────────────────────────────────────────────────────
+		QueryPerformanceCounter(&currentTime);
+
+		float rawDelta = static_cast<float>(
+			currentTime.QuadPart - lastTime.QuadPart) /
+			static_cast<float>(frequency.QuadPart);
+		lastTime = currentTime;
+
+		// Spike guard: clamp runaway deltas (debugger pause, OS preemption).
+		float deltaTime = std::min(rawDelta, kMaxDeltaTime);
+		accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime); // Prevent spiral of death from accumulating too much time.
+
+		// ── 3. Frame ───────────────────────────────────────────────────────
+		FrameTick(deltaTime, accumulator);
+
+		// ── 4. Frame limiter (sleep, not spin) ────────────────────────────
+		//    Only applied when VSync is off; VSync already throttles us.
+		if (!engineContext.settings.isVSyncEnabled())
 		{
+			const float targetFrameTime = 1.0f / engineContext.settings.getMaxFps();
+
 			QueryPerformanceCounter(&currentTime);
-			Time::deltaTime = (float)(currentTime.QuadPart - lastTime.QuadPart) / frequency.QuadPart;
-			lastTime = currentTime;
+			float elapsed = static_cast<float>(
+				currentTime.QuadPart - lastTime.QuadPart) /
+				static_cast<float>(frequency.QuadPart);
 
-
-			if (Time::deltaTime >= (1.0f / engineContext.settings.getMaxFps()))
+			float sleepSeconds = targetFrameTime - elapsed;
+			if (sleepSeconds > 0.002f)
 			{
-				LARGE_INTEGER frameStart = currentTime;
+				// Sleep(1) undershoots by ~1-2 ms; leave a 2 ms margin
+				// and spin-wait only the last tiny slice.
+				DWORD sleepMs = static_cast<DWORD>((sleepSeconds - 0.002f) * 1000.0f);
+				if (sleepMs > 0)
+					Sleep(sleepMs);
 
-				//-------MAIN LOOP UPDATE-------
-				FrameTick();
-				//------------------------------
-
-#ifdef _DEBUG
-				debugFps++;
-#endif // !_DEBUG
-
-				Time::deltaTime = 0.0f;
-				if (!engineContext.settings.isVSyncEnabled())
-				{
-					LARGE_INTEGER current;
-					float targetTime = 1.0f / engineContext.settings.getMaxFps();
-
-					do {
-						QueryPerformanceCounter(&current);
-						elapsed = (float)(current.QuadPart - frameStart.QuadPart) / frequency.QuadPart;
-					} while (elapsed < targetTime);
-				}
+				// Precise spin for the remaining 2 ms margin
+				do { QueryPerformanceCounter(&currentTime); } while (static_cast<float>(currentTime.QuadPart - lastTime.QuadPart) /
+					static_cast<float>(frequency.QuadPart) < targetFrameTime);
 			}
-			else
-			{
-				//Yield CPU time to other processes
-				Sleep(1);
-			}
-
-#ifdef _DEBUG
-			UpdateDebugTitle();
-#endif // !_DEBUG
-
-		}
-	} while ((msg.message != WM_QUIT) && isRunning);
-}
-
-#ifdef _DEBUG
-void Editor::UpdateDebugTitle()
-{
-	debugTime = (float)(currentTime.QuadPart - debugTimeLast.QuadPart) / frequency.QuadPart;
-	if (debugTime >= 1.0f)
-	{
-		wsprintf(g_DebugStr, window.GetWindowName());
-		wsprintf(&g_DebugStr[strlen(g_DebugStr)], " FPS: %d", (debugFps));
-		SetWindowText(window.GetHWND(), g_DebugStr);
-		debugTimeLast = currentTime;
-		debugFps = 0;
-	}
-}
-#endif // !_DEBUG
-
-void Editor::FrameTick()
-{
-	window.GetGraphics().Clear();
-	HandleSignal(HandleInput());
-	HandleSignal(Update());
-	imGuiManager.DrawBegin();
-	Render();
-	imGuiManager.DrawEnd();
-	HandleSignal(HandleEvents());
-	window.GetGraphics().Present();
-	inputManager.keyboard.Update();
-	inputManager.mouse.Update();
-}
-
-Signal Editor::HandleInput()
-{
-	if (!gameStack.empty())
-	{
-		return gameStack.back()->HandleInput();
-	}
-	return Signal();
-}
-
-Signal Editor::Update()
-{
-	if (!gameStack.empty())
-	{
-		return gameStack.back()->Update();
-	}
-	return Signal();	
-}
-
-void Editor::Render()
-{
-	if (!gameStack.empty())
-	{
-		for (auto& state : gameStack)
-		{
-			renderer.SetCamera(state->GetCamera());
-			renderSystem.Render(state->GetStateID());
 		}
 	}
 }
 
-Signal Editor::HandleEvents()
+void Editor::FrameTick(float deltaTime, float& accumulator)
 {
-	for (auto e : registry.View<Umi::ResolutionChange, EventTag>())
+	imGuiManager.ProcessDeferred();
+
+	//HandleSignal(HandleInput());
+
+	accumulator += deltaTime;
+	//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
+	while (accumulator >= kFixedStep)
 	{
-		auto& resChange = registry.GetComponent<Umi::ResolutionChange>(e);
-		if (resChange.resolution.width > 0 && resChange.resolution.height > 0)
-		{
-			ChangeResolution(resChange.resolution.width, resChange.resolution.height);
-			uiSystem.RecalculateAll(settings.getResolution());
-
-			for (auto& state : gameStack)
-			{
-				state->GetCamera()->UpdateProjectionMatrix();
-			}
-
-			registry.DestroyEntity(e);
-		}
+		//FixedUpdate(kFixedStep);
+		accumulator -= kFixedStep;
 	}
 
-	for (auto e : registry.View<Umi::LoadState, EventTag>())
-	{
-		auto& loadState = registry.GetComponent<Umi::LoadState>(e);
-		LoadState(loadState.stateID);
-		registry.DestroyEntity(e);
+	const float alpha = accumulator / kFixedStep;
 
-	}
+	//HandleSignal(Update(deltaTime));
+	scriptManager.Update();
 
-	for (auto e : registry.View<Umi::OpenSettings, EventTag>())
-	{
-		AddState(SettingsStateID);
+	window.GetGraphics().FrameStart();
+	window.GetGraphics().Render();
+	window.GetGraphics().StartImguiFrame();
+	imGuiManager.Render();
+	window.GetGraphics().FrameEnd();
+	//window.GetGraphics().Clear();
+	//Render(alpha);
+	//imGuiManager.DrawBegin();
+	//RenderImGui();
+	//imGuiManager.DrawEnd();
+	//window.GetGraphics().Present();
 
-		registry.DestroyEntity(e);
-	}
-
-	for (auto e : registry.View<Umi::QuitGame, EventTag>())
-	{
-		RequestExit();
-		registry.DestroyEntity(e);
-	}
-
-	for (auto e : registry.View<Umi::ExitToMainMenu, EventTag>())
-	{
-		ClearStack();
-		LoadState(MainMenuStateID);
-		registry.DestroyEntity(e);
-	}
-
-	return Signal();
-}
-
-void Editor::AddState(StringID stateId)
-{
-	if (stateId != StringIDNone)
-	{
-		gameStack.push_back(stateRegistry.Get(stateId).create(engineContext));
-	}
-}
-
-void Editor::AddState(std::unique_ptr<GameState> state)
-{
-	if (state)
-	{
-		gameStack.push_back(std::move(state));
-	}
-}
-
-void Editor::PopState()
-{
-	if (!gameStack.empty())
-	{
-		gameStack.pop_back();
-	}
-}
-
-void Editor::ClearStack()
-{
-	gameStack.clear();
-}
-
-void Editor::CloseGame()
-{
-	isRunning = false;
-}
-
-void Editor::ChangeResolution(int width, int height)
-{
-	window.SetResolution(width, height);
-}
-
-void Editor::SetWindowedFullScreen()
-{
-	window.SetWindowedFullScreen();
-}
-
-void Editor::SetFullScreen()
-{
-	window.SetFullScreen(true);
-	//EventManager::Get().ResolutionChanged();
-}
-
-void Editor::RequestExit()
-{
-	isRunning = false;
-}
-
-void Editor::HandleSignal(Signal signal)
-{
-	switch (signal.type)
-	{
-	case(SignalType::None):
-		break;
-
-		//------------------CLOSE------------------//
-	case(SignalType::Close):
-		PopState();
-		break;
-	case(SignalType::CloseGame):
-		CloseGame();
-		break;
-		//-----------------------------------------//
-
-	case(SignalType::FinishedLoading):
-		ClearStack();
-		AddState(stateRegistry.Get(signal.nextState).create(engineContext));
-		break;
-	case(SignalType::AddState):
-		AddState(signal.nextState);
-		break;
-
-	case(SignalType::GameError):
-		HandleError(signal.errorCode);
-		break;
-	default:
-		break;
-	}
-
-
-	return;
-}
-
-void Editor::HandleError(ErrorCode errorCode)
-{
-	std::string errorMessage = ErrorCodeToString(errorCode);
-	MessageBoxW(NULL, std::wstring(errorMessage.begin(), errorMessage.end()).c_str(), L"Error", MB_ICONEXCLAMATION | MB_OK);
-}
-
-void Editor::LoadState(StringID stateId)
-{
-	AddState(std::make_unique<LoadingState>(engineContext, stateId, stateRegistry.Get(stateId).prefabRequest));
-}
-
-bool Editor::ProcessMessages()
-{
-	return window.ProcessMessages();
+	//HandleSignal(HandleEvents());
 }

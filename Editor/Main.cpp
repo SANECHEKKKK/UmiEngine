@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <sstream>
-#include <Editor/Editor.h>
+//#include <Editor/Editor.h>
+import Editor;
 
 #define DBOUT( s )            \
 {                             \
@@ -13,14 +14,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 {
 	try
 	{
-		Editor editor(hInstance, "Umi Editor");
+		Umi::Editor editor(hInstance, "Umi Editor");
 		editor.Run();
 	}
 	catch (const std::exception& e)
 	{
-		MSG msg;
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {}
-
 		MessageBoxA(nullptr, e.what(), "Exception", MB_ICONEXCLAMATION | MB_OK);
 		DBOUT(e.what());
 	}

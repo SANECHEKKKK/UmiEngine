@@ -1,385 +1,386 @@
-#include <Model/ModelManager.h>
-#include <d3d11.h>
-#include <Model/Model.h>
-#include <Vertex/Vertex.h>
+module;
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
-#include <fstream>
+#include <Graphics/d3dx12.h>
 
-#include <DirectXTK/WICTextureLoader.h>
-#include <assimp/matrix4x4.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <Texture/stb_image.h>
+
+#include <DirectXMath.h>
+
+#include <string_view>
+
+#include <wrl/client.h>
+module ModelManager;
+
+import Model;
+import Vertex;
+import GraphicsContext;
+import EngineContext;
 
 using namespace Umi;
+using Microsoft::WRL::ComPtr;
 
-struct ModelHeader
+void ModelManager::LoadNode(const aiNode* node, const aiScene* scene, ModelData& modelData)
 {
-	char magic[4] = { 'M','O','D','L' };
-	uint32_t version = 1;
-};
-
-static inline DirectX::XMMATRIX AiToXMMATRIX(const aiMatrix4x4& m)
-{
-	return DirectX::XMMATRIX(
-		m.a1, m.a2, m.a3, m.a4,
-		m.b1, m.b2, m.b3, m.b4,
-		m.c1, m.c2, m.c3, m.c4,
-		m.d1, m.d2, m.d3, m.d4
-	);
-}
-
-ModelManager::ModelData& ModelManager::GetModel(int id)
-{
-	return models[id];
-}
-
-std::vector<Mesh>& ModelManager::GetMesh(int modelID)
-{
-	return models[modelID].m_model.meshes;
-}
-
-int ModelManager::LoadModel(const std::string& filepath)
-{
-	if (modelCount >= MODEL_MAX)
-		return INVALID_MODEL_ID;
-
-	LoadableModelData data;
-
-	for (int i = 0; i < MODEL_MAX; ++i)
+	//--------Process all the meshes of the current node--------
+	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
-		if (models[i].m_directory == filepath)
+		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+		LoadMesh(mesh, scene, modelData);
+	}
+	//----------------------------------------------------------
+
+	//--------Recursively process all the children nodes--------
+	for (unsigned int i = 0; i < node->mNumChildren; i++)
+	{
+		LoadNode(node->mChildren[i], scene, modelData);
+	}
+	//----------------------------------------------------------
+}
+
+void ModelManager::LoadMesh(const aiMesh* mesh, const aiScene* scene, ModelData& modelData)
+{
+	Mesh meshData{};
+
+	//------------VERTEX DATA EXTRACTION-------------
+	for (UINT i = 0; i < mesh->mNumVertices; i++)
+	{
+		Vertex3D vertex{};
+
+		vertex.position.x = mesh->mVertices[i].x;
+		vertex.position.y = mesh->mVertices[i].y;
+		vertex.position.z = mesh->mVertices[i].z;
+
+		if (mesh->HasNormals())
 		{
-			return i;
+			vertex.normal.x = mesh->mNormals[i].x;
+			vertex.normal.y = mesh->mNormals[i].y;
+			vertex.normal.z = mesh->mNormals[i].z;
 		}
+		else
+		{
+			vertex.normal = DirectX::XMFLOAT3(0, 1, 0);
+		}
+
+		if (mesh->mTextureCoords[0])
+		{
+			vertex.texcoord.x = mesh->mTextureCoords[0][i].x;
+			vertex.texcoord.y = mesh->mTextureCoords[0][i].y;
+		}
+		else
+		{
+			vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
+		}
+
+		meshData.vertices.push_back(vertex);
 	}
+	//-----------------------------------------------
 
-	models[modelCount].m_directory = filepath;
-
-	std::ifstream inFile(filepath, std::ios::binary);
-	if (inFile.is_open())
+	//-------------INDEX DATA EXTRACTION-------------
+	for (UINT i = 0; i < mesh->mNumFaces; i++)
 	{
-		ModelHeader header;
-		inFile.read(reinterpret_cast<char*>(&header), sizeof(ModelHeader));
-
-		//Basic security check
-		if (header.magic[0] != 'M' || header.magic[1] != 'O' ||
-			header.magic[2] != 'D' || header.magic[3] != 'L') {
-			inFile.close();
-			return -1;
-		}
-
-		if (header.version != 1) {
-			inFile.close();
-			return -1;
-		}
-
-		data = ReadModelData(inFile);
-		inFile.close();
+		aiFace face = mesh->mFaces[i];
+		for (UINT j = 0; j < face.mNumIndices; j++)
+			meshData.indices.push_back(face.mIndices[j]);
 	}
-	else
-	{
-		return -1;
-	}
+	meshData.indexCount = static_cast<UINT>(meshData.indices.size());
+	//-----------------------------------------------
 
-	data.m_directory = filepath;
-	data.modelID = modelCount;
+	//-----------MATERIAL INDEX EXTRACTION-----------
+	meshData.materialIndex = mesh->mMaterialIndex;
+	//-----------------------------------------------
 
-	loadList.push_back(data);
-
-	return modelCount++;
+	modelData.meshes.push_back(meshData);
 }
 
-LoadableModelData ModelManager::ReadModelData(std::ifstream& file)
+void ModelManager::LoadTexture(const aiScene* scene, ModelData& modelData)
 {
-	LoadableModelData data;
+	for (UINT i = 0; i < scene->mNumMaterials; i++)
+	{
+		Material material;
 
-	auto ReadString = [&file]() -> std::string {
-		uint32_t length;
-		file.read(reinterpret_cast<char*>(&length), sizeof(uint32_t));
-		if (length > 0) {
-			std::string str(length, '\0');
-			file.read(&str[0], length);
-			return str;
-		}
-		return "";
+		aiMaterial* aimaterial = scene->mMaterials[i];
+
+
+		// Copy diffuse color
+		aiColor3D color(0.8f, 0.8f, 0.8f);
+		aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+		material.baseColor.x = color.r;
+		material.baseColor.y = color.g;
+		material.baseColor.z = color.b;
+		material.baseColor.w = 1.0f;
+
+		aiString texPath;
+		bool textureFound = false;
+
+		// Try different texture types
+		aiTextureType textureTypes[] = {
+			aiTextureType_DIFFUSE,
+			aiTextureType_BASE_COLOR,
+			aiTextureType_UNKNOWN,
+			aiTextureType_NONE,
+			aiTextureType_EMISSIVE,
+			aiTextureType_SPECULAR,
+			aiTextureType_AMBIENT,
+			aiTextureType_REFLECTION,
+			aiTextureType_NORMALS,
+			aiTextureType_HEIGHT,
+			aiTextureType_METALNESS,
+			aiTextureType_DIFFUSE_ROUGHNESS,
 		};
 
-	//--------------Global Inverse Transform----------------//
-	file.read(reinterpret_cast<char*>(&data.globalInverseTransform), sizeof(DirectX::XMFLOAT4X4));
-	//------------------------------------------------------//
-
-	//------------------Root Node Index---------------------//
-	file.read(reinterpret_cast<char*>(&data.rootNodeIndex), sizeof(int));
-	//------------------------------------------------------//
-
-	//---------------------Materials------------------------//
-	uint32_t materialCount;
-	file.read(reinterpret_cast<char*>(&materialCount), sizeof(uint32_t));
-	data.materials.resize(materialCount);
-	for (auto& material : data.materials) 
-	{
-		file.read(reinterpret_cast<char*>(&material.diffuseColor), sizeof(DirectX::XMFLOAT4));
-		material.texturePath = ReadString();
-		file.read(reinterpret_cast<char*>(&material.isEmbedded), sizeof(bool));
-		file.read(reinterpret_cast<char*>(&material.textureWidth), sizeof(unsigned int));
-		file.read(reinterpret_cast<char*>(&material.textureHeight), sizeof(unsigned int));
-
-		uint32_t textureDataSize;
-		file.read(reinterpret_cast<char*>(&textureDataSize), sizeof(uint32_t));
-		if (textureDataSize > 0) {
-			material.embeddedTextureData.resize(textureDataSize);
-			file.read(reinterpret_cast<char*>(material.embeddedTextureData.data()), textureDataSize);
-		}
-	}
-	//------------------------------------------------------//
-
-	//---------------------Meshes---------------------------//
-	uint32_t meshCount;
-	file.read(reinterpret_cast<char*>(&meshCount), sizeof(uint32_t));
-	data.meshes.resize(meshCount);
-	for (auto& mesh : data.meshes) 
-	{
-		//material index
-		file.read(reinterpret_cast<char*>(&mesh.materialIndex), sizeof(int));
-
-		//vertices
-		uint32_t vertexCount;
-		file.read(reinterpret_cast<char*>(&vertexCount), sizeof(uint32_t));
-		mesh.vertices.resize(vertexCount);
-		file.read(reinterpret_cast<char*>(mesh.vertices.data()), vertexCount * sizeof(Umi::Vertex3D));
-
-		//indices
-		uint32_t indexCount;
-		file.read(reinterpret_cast<char*>(&indexCount), sizeof(uint32_t));
-		mesh.indices.resize(indexCount);
-		file.read(reinterpret_cast<char*>(mesh.indices.data()), indexCount * sizeof(UINT));
-	}
-	//------------------------------------------------------//
-
-	//---------------------Bones----------------------------//
-	uint32_t boneCount;
-	file.read(reinterpret_cast<char*>(&boneCount), sizeof(uint32_t));
-	data.bones.resize(boneCount);
-	for (auto& bone : data.bones) 
-	{
-		bone.name = ReadString();
-		file.read(reinterpret_cast<char*>(&bone.offsetMatrix), sizeof(DirectX::XMMATRIX));
-		file.read(reinterpret_cast<char*>(&bone.parentIndex), sizeof(int));
-	}
-	//------------------------------------------------------//
-	
-	//----------------Bone Name to Index Map----------------//
-	uint32_t boneMapCount;
-	file.read(reinterpret_cast<char*>(&boneMapCount), sizeof(uint32_t));
-	for (uint32_t i = 0; i < boneMapCount; i++) 
-	{
-		std::string name = ReadString();
-		int index;
-		file.read(reinterpret_cast<char*>(&index), sizeof(int));
-		data.boneNameToIndex[name] = index;
-	}
-	//------------------------------------------------------//
-
-	//---------------------Animations-----------------------//
-	uint32_t animationCount;
-	file.read(reinterpret_cast<char*>(&animationCount), sizeof(uint32_t));
-	data.animations.resize(animationCount);
-	for (auto& animation : data.animations) 
-	{
-		animation.name = ReadString();
-		file.read(reinterpret_cast<char*>(&animation.duration), sizeof(float));
-		file.read(reinterpret_cast<char*>(&animation.ticksPerSecond), sizeof(float));
-
-		//bone animations
-		uint32_t boneAnimCount;
-		file.read(reinterpret_cast<char*>(&boneAnimCount), sizeof(uint32_t));
-		animation.boneAnimations.resize(boneAnimCount);
-		for (auto& boneAnim : animation.boneAnimations) {
-			file.read(reinterpret_cast<char*>(&boneAnim.boneIndex), sizeof(int));
-
-			//positions
-			uint32_t posCount;
-			file.read(reinterpret_cast<char*>(&posCount), sizeof(uint32_t));
-			boneAnim.positions.resize(posCount);
-			file.read(reinterpret_cast<char*>(boneAnim.positions.data()), posCount * sizeof(KeyPosition));
-
-			//rotations
-			uint32_t rotCount;
-			file.read(reinterpret_cast<char*>(&rotCount), sizeof(uint32_t));
-			boneAnim.rotations.resize(rotCount);
-			file.read(reinterpret_cast<char*>(boneAnim.rotations.data()), rotCount * sizeof(KeyRotation));
-
-			//scales
-			uint32_t scaleCount;
-			file.read(reinterpret_cast<char*>(&scaleCount), sizeof(uint32_t));
-			boneAnim.scales.resize(scaleCount);
-			file.read(reinterpret_cast<char*>(boneAnim.scales.data()), scaleCount * sizeof(KeyScale));
-		}
-	}
-	//------------------------------------------------------//
-
-	//---------------------Model Nodes----------------------//
-	uint32_t nodeCount;
-	file.read(reinterpret_cast<char*>(&nodeCount), sizeof(uint32_t));
-	data.nodes.resize(nodeCount);
-	for (auto& node : data.nodes) 
-	{
-		node.name = ReadString();
-		file.read(reinterpret_cast<char*>(&node.transformation), sizeof(DirectX::XMFLOAT4X4));
-		file.read(reinterpret_cast<char*>(&node.parentIndex), sizeof(int));
-
-		//children indices
-		uint32_t childCount;
-		file.read(reinterpret_cast<char*>(&childCount), sizeof(uint32_t));
-		node.childrenIndices.resize(childCount);
-		file.read(reinterpret_cast<char*>(node.childrenIndices.data()), childCount * sizeof(int));
-	}
-	//------------------------------------------------------//
-
-	return data;
-}
-
-void ModelManager::LoadMain()
-{
-	for (auto& data : loadList)
-	{
-		ModelData modelData;
-
-		for (auto& mesh : data.meshes)
+		for (aiTextureType type : textureTypes)
 		{
-			D3D11_BUFFER_DESC vbd{};
-			vbd.Usage = D3D11_USAGE_DEFAULT;
-			vbd.ByteWidth = sizeof(Umi::Vertex3D) * static_cast<UINT>(mesh.vertices.size());
-			vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-			D3D11_SUBRESOURCE_DATA vinitData{};
-			vinitData.pSysMem = mesh.vertices.data();
-
-			Umi::Mesh newMesh{};
-			HRESULT hr = g_Device->CreateBuffer(&vbd, &vinitData, &newMesh.vertexBuffer);
-			if (FAILED(hr))
+			if (aimaterial->GetTextureCount(type) > 0)
 			{
-				MessageBoxA(nullptr, "Failed to create vertex buffer!", "ERROR", MB_OK);
-			}
-
-			D3D11_BUFFER_DESC ibd{};
-			ibd.Usage = D3D11_USAGE_DEFAULT;
-			ibd.ByteWidth = sizeof(UINT) * static_cast<UINT>(mesh.indices.size());
-			ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-			D3D11_SUBRESOURCE_DATA iinitData{};
-			iinitData.pSysMem = mesh.indices.data();
-
-			hr = g_Device->CreateBuffer(&ibd, &iinitData, &newMesh.indexBuffer);
-			if (FAILED(hr))
-			{
-				MessageBoxA(nullptr, "Failed to create index buffer!", "ERROR", MB_OK);
-			}
-
-			newMesh.indexCount = static_cast<UINT>(mesh.indices.size());
-
-			newMesh.hasTexture = false;
-			newMesh.diffuseColor = DirectX::XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
-
-			if (mesh.materialIndex >= 0 && mesh.materialIndex < static_cast<int>(data.materials.size()))
-			{
-				MaterialData& matData = data.materials[mesh.materialIndex];
-				newMesh.diffuseColor = matData.diffuseColor;
-
-				if (!matData.texturePath.empty())
+				if (aimaterial->GetTexture(type, 0, &texPath) == AI_SUCCESS)
 				{
-					if (matData.isEmbedded)
+					textureFound = true;
+					break;
+				}
+			}
+		}
+
+		if (!textureFound)
+		{
+			const char* propertyKeys[] = {
+		   "$tex.file",
+		   "DiffuseColor",
+		   "$raw.DiffuseColor",
+		   "Maya|TEX_color_map",
+		   "Maya|file",
+		   "$clr.diffuse",
+		   "baseColor"
+			};
+
+			for (const char* key : propertyKeys)
+			{
+				if (aiGetMaterialString(aimaterial, key, 0, 0, &texPath) == AI_SUCCESS)
+				{
+					textureFound = true;
+					break;
+				}
+			}
+		}
+
+		if (textureFound)
+		{
+			std::string texPathStr = texPath.C_Str();
+			std::vector<uint8_t> embeddedTextureData;
+			int width, height, channels;
+
+			if (!texPathStr.empty() && texPathStr[0] == '*')
+			{
+				int texIndex = atoi(texPathStr.c_str() + 1);
+
+				if (texIndex >= 0 && texIndex < static_cast<int>(scene->mNumTextures))
+				{
+					aiTexture* embeddedTex = scene->mTextures[texIndex];
+
+					embeddedTextureData.resize(embeddedTex->mWidth);
+					memcpy(embeddedTextureData.data(), embeddedTex->pcData, embeddedTex->mWidth);
+
+					if (embeddedTex->mHeight == 0) // Compressed format
 					{
-						if (matData.textureHeight == 0)
-						{
-							hr = DirectX::CreateWICTextureFromMemory(
-								g_Device,
-								matData.embeddedTextureData.data(),
-								matData.embeddedTextureData.size(),
-								nullptr,
-								newMesh.texture.GetAddressOf()
-							);
+						uint8_t* decoded = stbi_load_from_memory(
+							embeddedTextureData.data(),
+							embeddedTextureData.size(),
+							&width, &height, &channels,
+							4  // force RGBA
+						);
+
+						if (decoded) {
+							textureManager.LoadTexture3DRawData(decoded, width, height);
+							material.albedoIndex = graphicsContext.descriptorHeap3D.Size() - 2;
+							modelData.materials.push_back(material);
+							stbi_image_free(decoded);
 						}
 						else
 						{
-							D3D11_TEXTURE2D_DESC texDesc = {};
-							texDesc.Width = matData.textureWidth;
-							texDesc.Height = matData.textureHeight;
-							texDesc.MipLevels = 1;
-							texDesc.ArraySize = 1;
-							texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-							texDesc.SampleDesc.Count = 1;
-							texDesc.Usage = D3D11_USAGE_DEFAULT;
-							texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-
-							D3D11_SUBRESOURCE_DATA initData = {};
-							initData.pSysMem = matData.embeddedTextureData.data();
-							initData.SysMemPitch = matData.textureWidth * 4;
-
-							Microsoft::WRL::ComPtr<ID3D11Texture2D> tex2D;
-							hr = g_Device->CreateTexture2D(&texDesc, &initData, tex2D.GetAddressOf());
-
-							if (SUCCEEDED(hr))
-							{
-								hr = g_Device->CreateShaderResourceView(
-									tex2D.Get(),
-									nullptr,
-									newMesh.texture.GetAddressOf()
-								);
-							}
+							// Handle decoding failure
+							width = height = 0;
 						}
 
-						if (FAILED(hr))
-						{
-							MessageBoxA(nullptr, "Failed to load embedded texture!", "WARNING", MB_OK);
-						}
 					}
-					else
+					else // Uncompressed ARGB8888
 					{
-						std::string fullPath = data.m_directory + "\\" + matData.texturePath;
+						width = embeddedTex->mWidth;
+						height = embeddedTex->mHeight;
 
-						hr = DirectX::CreateWICTextureFromFileEx(
-							g_Device,
-							g_DeviceContext,
-							std::wstring(fullPath.begin(), fullPath.end()).c_str(),
-							0,
-							D3D11_USAGE_DEFAULT,
-							D3D11_BIND_SHADER_RESOURCE,
-							0,
-							D3D11_RESOURCE_MISC_GENERATE_MIPS,
-							DirectX::WIC_LOADER_DEFAULT,
-							nullptr,
-							newMesh.texture.GetAddressOf()
-						);
+						std::vector<uint8_t> pixels(width * height * 4);
 
-						if (FAILED(hr))
-						{
-							MessageBoxA(nullptr, ("Failed to load texture: " + matData.texturePath).c_str(), "WARNING", MB_OK);
+						for (size_t i = 0; i < width * height; i++) {
+							aiTexel& t = embeddedTex->pcData[i];
+							pixels[i * 4 + 0] = t.r;
+							pixels[i * 4 + 1] = t.g;
+							pixels[i * 4 + 2] = t.b;
+							pixels[i * 4 + 3] = t.a;
 						}
-					}
 
-					if (SUCCEEDED(hr))
-					{
-						newMesh.hasTexture = true;
+						textureManager.LoadTexture3DRawData(pixels.data(), width, height);
+						material.albedoIndex = graphicsContext.descriptorHeap3D.Size() - 2;
+						modelData.materials.push_back(material);
 					}
 				}
 			}
 
-			modelData.m_model.meshes.push_back(newMesh);
+			////textureManager.LogInfo("Texture path: " + std::string(texPath.C_Str()));
 		}
-
-		modelData.m_model.bones = data.bones;
-		modelData.m_model.animations = data.animations;
-		modelData.m_model.boneNameToIndex = data.boneNameToIndex;
-		modelData.m_model.globalInverseTransform = data.globalInverseTransform;
-		modelData.m_model.nodes = data.nodes;
-		modelData.m_model.rootNodeIndex = data.rootNodeIndex;
-		modelData.id = data.modelID;
-
-		models[data.modelID] = modelData;
+		else
+		{
+			modelData.materials.push_back(material);
+		}
 	}
 }
 
-ModelManager::ModelManager(ID3D11Device* _g_Device, ID3D11DeviceContext* _g_DeviceContext)
+bool ModelManager::CreateVertexBuffer(Mesh& mesh)
 {
-	g_Device = _g_Device;
-	g_DeviceContext = _g_DeviceContext;
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(mesh.vertices.size() * sizeof(Vertex3D));
+
+	auto result = graphicsContext.device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&mesh.vertexBuffer)
+	);
+	if (result != S_OK)
+	{
+		// Handle non-fatal error
+		return false;
+	}
+
+	Vertex3D* vertMapped = nullptr;
+
+	result = mesh.vertexBuffer->Map(0, nullptr, (void**)&vertMapped);
+	if (result != S_OK)
+	{
+		// Handle non-fatal error
+		return false;
+	}
+
+	std::copy(std::begin(mesh.vertices), std::end(mesh.vertices), vertMapped);
+
+	mesh.vertexBuffer->Unmap(0, nullptr);
+
+	mesh.vertexBufferView.BufferLocation = mesh.vertexBuffer->GetGPUVirtualAddress();
+	mesh.vertexBufferView.SizeInBytes = mesh.vertices.size() * sizeof(Vertex3D);
+	mesh.vertexBufferView.StrideInBytes = sizeof(Vertex3D);
+
+	return true;
+}
+
+bool ModelManager::CreateIndexBuffer(Mesh& mesh)
+{
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(mesh.indices.size() * sizeof(UINT));
+
+	auto result = graphicsContext.device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&mesh.indexBuffer)
+	);
+	if (result != S_OK)
+	{
+		// Handle non-fatal error
+		return false;
+	}
+
+	UINT* mappedIdx = nullptr;
+
+	mesh.indexBuffer->Map(0, nullptr, (void**)&mappedIdx);
+	std::copy(std::begin(mesh.indices), std::end(mesh.indices), mappedIdx);
+	mesh.indexBuffer->Unmap(0, nullptr);
+
+	mesh.indexBufferView.BufferLocation = mesh.indexBuffer->GetGPUVirtualAddress();
+	mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	mesh.indexBufferView.SizeInBytes = mesh.indices.size() * sizeof(mesh.indices[0]);
+
+	return true;
+}
+
+ModelID ModelManager::LoadModel(std::string_view filePath)
+{
+	//--------Check if the model is already loaded--------
+	for (const auto& model : modelList)
+	{
+		if (model.filePath == filePath)
+			return ModelID(&model - &modelList[0]);
+	}
+	//----------------------------------------------------
+
+	//-------------Load the model using Assimp------------
+	ModelData modelData{};
+	modelData.filePath = std::string(filePath);
+
+	Assimp::Importer importer;
+
+	const aiScene* scene = importer.ReadFile(
+		filePath.data(),
+		aiProcess_Triangulate |
+		aiProcess_CalcTangentSpace |
+		aiProcess_JoinIdenticalVertices |
+		aiProcess_ConvertToLeftHanded |
+		aiProcess_EmbedTextures
+
+		//aiProcess_Triangulate |
+		//aiProcess_ConvertToLeftHanded |
+		//aiProcess_CalcTangentSpace |
+		//aiProcess_GenNormals |
+		//aiProcess_JoinIdenticalVertices |  // Optimize vertex data
+		//aiProcess_OptimizeMeshes |
+		//aiProcess_FlipUVs |              // Sometimes needed
+		//aiProcess_EmbedTextures
+	);
+
+	if (!scene || !scene->HasMeshes() || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+	{
+		// Handle non fatal error
+		return INVALID_MODELID;
+	}
+	//----------------------------------------------------
+
+	//--------Recursively process the root node and its children--------
+	LoadNode(scene->mRootNode, scene, modelData);
+	//------------------------------------------------------------------
+
+	LoadTexture(scene, modelData);
+
+	for (auto& mesh : modelData.meshes)
+	{
+		if (!CreateVertexBuffer(mesh) || !CreateIndexBuffer(mesh))
+		{
+			// Handle non fatal error
+			return INVALID_MODELID;
+		}
+	}
+
+	modelList.push_back(modelData);
+
+	return ModelID(modelList.size() - 1);
+}
+
+ModelData& ModelManager::GetModelData(ModelID id)
+{
+	if (static_cast<size_t>(id) >= modelList.size())
+	{
+		// Handle non fatal error
+		return modelList[0]; // Return a default model data or handle it as needed
+	}
+	return modelList[static_cast<size_t>(id)];
+}
+
+ModelManager::ModelManager(TextureManager& textureManager, GraphicsContext& graphicsContext) : textureManager(textureManager), graphicsContext(graphicsContext)
+{
+	modelList.reserve(64);
 }

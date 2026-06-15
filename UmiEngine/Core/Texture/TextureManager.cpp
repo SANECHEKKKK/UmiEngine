@@ -1,87 +1,833 @@
-#include <Texture/TextureManager.h>
-#include <d3d11.h>
-#include <DirectXTex/DirectXTex.h>
+module;
+#include <string>
+#include <string_view>
+#include <Graphics/d3dx12.h>
+#include <wrl/client.h>
 
+#include <DirectXTex.h>
+#pragma comment(lib, "DirectXTex.lib")
+module TextureManager;
+
+import Texture;
+
+using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
-Umi::TextureManager::TextureData::~TextureData()
+size_t AlignmentedSize(size_t size, size_t alignment) {
+	return size + alignment - size % alignment;
+}
+
+Umi::TextureID Umi::TextureManager::LoadTexture(std::string_view filePath, DescriptorHeap& descriptorHeap)
 {
-	if (shader_resource_view)
+	TextureData textureData;
+
+	TexMetadata metadata = {};
+	ScratchImage scratchImg = {};
+
+	for (auto& tex : textureList) 
 	{
-		shader_resource_view->Release();
-		shader_resource_view = nullptr;
-	}
-}
-
-void Umi::TextureManager::Init(ID3D11Device* _g_Device, ID3D11DeviceContext* _g_DeviceContext)
-{
-	g_Device = _g_Device;
-	g_DeviceContext = _g_DeviceContext;
-}
-
-int Umi::TextureManager::LoadTexure(const std::wstring& filePath)
-{
-	// ���łɓ����̃e�N�X�`�����ǂݍ��܂�Ă��Ȃ����m�F����
-	for (int i = 0; i < g_TextureCount; i++) {
-		if (g_Textures[i].filename == filePath) {
-			return i; // ���łɓǂݍ��܂�Ă����̂�id���킽��
+		if (tex.filePath == filePath) {
+			return TextureID{ static_cast<uint32_t>(&tex - &textureList[0]) };
 		}
 	}
-	g_Textures[g_TextureCount].filename = filePath;
-	return g_TextureCount++;
-}
 
-ID3D11ShaderResourceView* Umi::TextureManager::Get(int id) const noexcept
-{
-	if (id < 0 || id >= g_TextureCount) {
-		return NULL;
+	auto result = LoadFromWICFile(
+		std::wstring(filePath.begin(), filePath.end()).c_str(), WIC_FLAGS_NONE,
+		&metadata, scratchImg);
+	textureData.filePath = std::string(filePath);
+
+	auto img = scratchImg.GetImage(0, 0, 0);
+
+	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
+	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapProp.CreationNodeMask = 0;
+	uploadHeapProp.VisibleNodeMask = 0;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT) * img->height;
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.SampleDesc.Quality = 0;
+
+	ID3D12Resource* uploadBuff = nullptr;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&uploadBuff));
+
+
+	D3D12_HEAP_PROPERTIES texHeapProp = {};
+	texHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+	texHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	texHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	texHeapProp.CreationNodeMask = 0;
+	texHeapProp.VisibleNodeMask = 0;
+
+	resDesc.Format = metadata.format;
+	resDesc.Width = metadata.width;
+	resDesc.Height = metadata.height;
+	resDesc.DepthOrArraySize = metadata.arraySize;
+	resDesc.MipLevels = metadata.mipLevels;
+	resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&texHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&textureData.texBuff));
+
+	uint8_t* mapForImg = nullptr;
+	result = uploadBuff->Map(0, nullptr, (void**)&mapForImg);
+	auto srcAddress = img->pixels;
+	auto rowPitch = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	for (int y = 0; y < img->height; ++y) {
+		std::copy_n(srcAddress,
+			rowPitch,
+			mapForImg);//コピー
+		//1行ごとの辻褄を合わせてやる
+		srcAddress += img->rowPitch;
+		mapForImg += rowPitch;
 	}
 
-	return g_Textures[id].shader_resource_view;
-}
+	uploadBuff->Unmap(0, nullptr);
 
-Umi::TextureManager::~TextureManager()
-{
-	for (int i = 0; i < g_TextureCount; i++) {
-		if (g_Textures[i].shader_resource_view) {
-			g_Textures[i].shader_resource_view->Release();
-			g_Textures[i].shader_resource_view = NULL;
-		}
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = uploadBuff;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint.Offset = 0;
+	src.PlacedFootprint.Footprint.Width = metadata.width;
+	src.PlacedFootprint.Footprint.Height = metadata.height;
+	src.PlacedFootprint.Footprint.Depth = metadata.depth;
+	src.PlacedFootprint.Footprint.RowPitch = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	src.PlacedFootprint.Footprint.Format = img->format;
+
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = textureData.texBuff.Get();
+	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dst.SubresourceIndex = 0;
+
+	ID3D12Fence* fence = nullptr;
+	UINT64 fenceValue = 0;
+	result = graphicsContext.device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
+	graphicsContext.commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+	D3D12_RESOURCE_BARRIER BarrierDesc = {};
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = textureData.texBuff.Get();
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+	graphicsContext.commandList->ResourceBarrier(1, &BarrierDesc);
+	graphicsContext.commandList->Close();
+
+	//コマンドリストの実行
+	ID3D12CommandList* cmdlists[] = { graphicsContext.commandList };
+	graphicsContext.commandQueue->ExecuteCommandLists(1, cmdlists);
+	////待ち
+	graphicsContext.commandQueue->Signal(fence, ++fenceValue);
+
+	if (fence->GetCompletedValue() != fenceValue) {
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		fence->SetEventOnCompletion(fenceValue, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
 	}
-	g_TextureCount = 0;
+	graphicsContext.commandAllocator->Reset();//キューをクリア
+	graphicsContext.commandList->Reset(graphicsContext.commandAllocator, nullptr);
+
+	//--------------------------------------------------
+	textureData.descriptorHeapIndex = descriptorHeap.Add();
+
+	//通常テクスチャビュー作成
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = metadata.format;//DXGI_FORMAT_R8G8B8A8_UNORM;//RGBA(0.0f～1.0fに正規化)
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;//後述
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2Dテクスチャ
+	srvDesc.Texture2D.MipLevels = 1;//ミップマップは使用しないので1
+
+	graphicsContext.device->CreateShaderResourceView(textureData.texBuff.Get(), //ビューと関連付けるバッファ
+		&srvDesc, //先ほど設定したテクスチャ設定情報
+		descriptorHeap.GetCPU( textureData.descriptorHeapIndex )//ヒープのどこに割り当てるか
+	);
+	//--------------------------------------------------
+
+	textureData.height = static_cast<float>(metadata.height);
+	textureData.width = static_cast<float>(metadata.width);
+
+	textureList.push_back(textureData);
+
+	if (uploadBuff) {
+		uploadBuff->Release();
+	}
+
+	return TextureID{ static_cast<uint32_t>(textureList.size() - 1) };
 }
 
-void Umi::TextureManager::Apply(int id)
+Umi::TextureID Umi::TextureManager::LoadTexture2D(std::string_view filePath)
 {
-	ID3D11ShaderResourceView* texture = Get(id);
-	g_DeviceContext->PSSetShaderResources(0, 1, &texture);
-}
+	TextureData textureData;
 
-void Umi::TextureManager::LoadMain()
-{
-	for (size_t i = 0; i < g_TextureCount; i++)
+	TexMetadata metadata = {};
+	ScratchImage scratchImg = {};
+
+	for (auto& tex : textureList)
 	{
-		if (!g_Textures[i].loaded)
-		{
-			// �e�N�X�`���ǂݍ���
-			DirectX::TexMetadata metadata;
-			DirectX::ScratchImage image;
-			//LoadFromWICFile(filePath.c_str(), WIC_FLAGS_NONE, &metadata, image);
-			HRESULT hr = LoadFromWICFile(g_Textures[i].filename.c_str(), WIC_FLAGS_NONE, &metadata, image);
-			if (FAILED(hr)) {
-				MessageBoxW(NULL, L"Couldn't read a texture file", g_Textures[i].filename.c_str(), MB_ICONEXCLAMATION | MB_OK);
-				return;
-			}
-			CreateShaderResourceView(g_Device, image.GetImages(), image.GetImageCount(), metadata, &g_Textures[i].shader_resource_view);
-			//g_Textures[g_TextureCount].width = (int)metadata.width;
-			//g_Textures[g_TextureCount].height = (int)metadata.height;
-
-			if (!g_Textures[i].shader_resource_view) {
-				MessageBoxW(NULL, L"Couldn't read a texture file", g_Textures[i].filename.c_str(), MB_ICONEXCLAMATION | MB_OK);
-				return;
-			}
-
-			g_Textures[i].loaded = true;
+		if (tex.filePath == filePath) {
+			return TextureID{ static_cast<uint32_t>(&tex - &textureList[0]) };
 		}
 	}
+
+	auto result = LoadFromWICFile(
+		std::wstring(filePath.begin(), filePath.end()).c_str(), WIC_FLAGS_NONE,
+		&metadata, scratchImg);
+	textureData.filePath = std::string(filePath);
+
+	auto img = scratchImg.GetImage(0, 0, 0);
+
+	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
+	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapProp.CreationNodeMask = 0;
+	uploadHeapProp.VisibleNodeMask = 0;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT) * img->height;
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.SampleDesc.Quality = 0;
+
+	ID3D12Resource* uploadBuff = nullptr;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&uploadBuff));
+
+
+	D3D12_HEAP_PROPERTIES texHeapProp = {};
+	texHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+	texHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	texHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	texHeapProp.CreationNodeMask = 0;
+	texHeapProp.VisibleNodeMask = 0;
+
+	resDesc.Format = metadata.format;
+	resDesc.Width = metadata.width;
+	resDesc.Height = metadata.height;
+	resDesc.DepthOrArraySize = metadata.arraySize;
+	resDesc.MipLevels = metadata.mipLevels;
+	resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&texHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&textureData.texBuff));
+
+	uint8_t* mapForImg = nullptr;
+	result = uploadBuff->Map(0, nullptr, (void**)&mapForImg);
+	auto srcAddress = img->pixels;
+	auto rowPitch = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	for (int y = 0; y < img->height; ++y) {
+		std::copy_n(srcAddress,
+			rowPitch,
+			mapForImg);//コピー
+		//1行ごとの辻褄を合わせてやる
+		srcAddress += img->rowPitch;
+		mapForImg += rowPitch;
+	}
+
+	uploadBuff->Unmap(0, nullptr);
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = uploadBuff;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint.Offset = 0;
+	src.PlacedFootprint.Footprint.Width = metadata.width;
+	src.PlacedFootprint.Footprint.Height = metadata.height;
+	src.PlacedFootprint.Footprint.Depth = metadata.depth;
+	src.PlacedFootprint.Footprint.RowPitch = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	src.PlacedFootprint.Footprint.Format = img->format;
+
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = textureData.texBuff.Get();
+	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dst.SubresourceIndex = 0;
+
+	ID3D12Fence* fence = nullptr;
+	UINT64 fenceValue = 0;
+	result = graphicsContext.device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
+	graphicsContext.commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+	D3D12_RESOURCE_BARRIER BarrierDesc = {};
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = textureData.texBuff.Get();
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+	graphicsContext.commandList->ResourceBarrier(1, &BarrierDesc);
+	graphicsContext.commandList->Close();
+
+	//コマンドリストの実行
+	ID3D12CommandList* cmdlists[] = { graphicsContext.commandList };
+	graphicsContext.commandQueue->ExecuteCommandLists(1, cmdlists);
+	////待ち
+	graphicsContext.commandQueue->Signal(fence, ++fenceValue);
+
+	if (fence->GetCompletedValue() != fenceValue) {
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		fence->SetEventOnCompletion(fenceValue, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	graphicsContext.commandAllocator->Reset();//キューをクリア
+	graphicsContext.commandList->Reset(graphicsContext.commandAllocator, nullptr);
+
+	//--------------------------------------------------
+	textureData.descriptorHeapIndex = graphicsContext.descriptorHeap2D.Add();
+
+	//通常テクスチャビュー作成
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = metadata.format;//DXGI_FORMAT_R8G8B8A8_UNORM;//RGBA(0.0f～1.0fに正規化)
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;//後述
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2Dテクスチャ
+	srvDesc.Texture2D.MipLevels = 1;//ミップマップは使用しないので1
+
+	graphicsContext.device->CreateShaderResourceView(textureData.texBuff.Get(), //ビューと関連付けるバッファ
+		&srvDesc, //先ほど設定したテクスチャ設定情報
+		graphicsContext.descriptorHeap2D.GetCPU(textureData.descriptorHeapIndex)//ヒープのどこに割り当てるか
+	);
+	//--------------------------------------------------
+
+	textureData.height = static_cast<float>(metadata.height);
+	textureData.width = static_cast<float>(metadata.width);
+
+	textureList.push_back(textureData);
+
+	if (uploadBuff) {
+		uploadBuff->Release();
+	}
+
+	return TextureID{ static_cast<uint32_t>(textureList.size() - 1) };
+}
+
+Umi::TextureID Umi::TextureManager::LoadTexture3D(std::string_view filePath)
+{
+	TextureData textureData;
+
+	TexMetadata metadata = {};
+	ScratchImage scratchImg = {};
+
+	for (auto& tex : textureList)
+	{
+		if (tex.filePath == filePath) {
+			return TextureID{ static_cast<uint32_t>(&tex - &textureList[0]) };
+		}
+	}
+
+	auto result = LoadFromWICFile(
+		std::wstring(filePath.begin(), filePath.end()).c_str(), WIC_FLAGS_NONE,
+		&metadata, scratchImg);
+	textureData.filePath = std::string(filePath);
+
+	auto img = scratchImg.GetImage(0, 0, 0);
+
+	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
+	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapProp.CreationNodeMask = 0;
+	uploadHeapProp.VisibleNodeMask = 0;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT) * img->height;
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.SampleDesc.Quality = 0;
+
+	ID3D12Resource* uploadBuff = nullptr;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&uploadBuff));
+
+
+	D3D12_HEAP_PROPERTIES texHeapProp = {};
+	texHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+	texHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	texHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	texHeapProp.CreationNodeMask = 0;
+	texHeapProp.VisibleNodeMask = 0;
+
+	resDesc.Format = metadata.format;
+	resDesc.Width = metadata.width;
+	resDesc.Height = metadata.height;
+	resDesc.DepthOrArraySize = metadata.arraySize;
+	resDesc.MipLevels = metadata.mipLevels;
+	resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&texHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&textureData.texBuff));
+
+	uint8_t* mapForImg = nullptr;
+	result = uploadBuff->Map(0, nullptr, (void**)&mapForImg);
+	auto srcAddress = img->pixels;
+	auto rowPitch = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	for (int y = 0; y < img->height; ++y) {
+		std::copy_n(srcAddress,
+			rowPitch,
+			mapForImg);//コピー
+		//1行ごとの辻褄を合わせてやる
+		srcAddress += img->rowPitch;
+		mapForImg += rowPitch;
+	}
+
+	uploadBuff->Unmap(0, nullptr);
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = uploadBuff;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint.Offset = 0;
+	src.PlacedFootprint.Footprint.Width = metadata.width;
+	src.PlacedFootprint.Footprint.Height = metadata.height;
+	src.PlacedFootprint.Footprint.Depth = metadata.depth;
+	src.PlacedFootprint.Footprint.RowPitch = AlignmentedSize(img->rowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	src.PlacedFootprint.Footprint.Format = img->format;
+
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = textureData.texBuff.Get();
+	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dst.SubresourceIndex = 0;
+
+	ID3D12Fence* fence = nullptr;
+	UINT64 fenceValue = 0;
+	result = graphicsContext.device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
+	graphicsContext.commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+	D3D12_RESOURCE_BARRIER BarrierDesc = {};
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = textureData.texBuff.Get();
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+	graphicsContext.commandList->ResourceBarrier(1, &BarrierDesc);
+	graphicsContext.commandList->Close();
+
+	//コマンドリストの実行
+	ID3D12CommandList* cmdlists[] = { graphicsContext.commandList };
+	graphicsContext.commandQueue->ExecuteCommandLists(1, cmdlists);
+	////待ち
+	graphicsContext.commandQueue->Signal(fence, ++fenceValue);
+
+	if (fence->GetCompletedValue() != fenceValue) {
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		fence->SetEventOnCompletion(fenceValue, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	graphicsContext.commandAllocator->Reset();//キューをクリア
+	graphicsContext.commandList->Reset(graphicsContext.commandAllocator, nullptr);
+
+	//--------------------------------------------------
+	textureData.descriptorHeapIndex = graphicsContext.descriptorHeap3D.Add();
+
+	//通常テクスチャビュー作成
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = metadata.format;//DXGI_FORMAT_R8G8B8A8_UNORM;//RGBA(0.0f～1.0fに正規化)
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;//後述
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2Dテクスチャ
+	srvDesc.Texture2D.MipLevels = 1;//ミップマップは使用しないので1
+
+	graphicsContext.device->CreateShaderResourceView(textureData.texBuff.Get(), //ビューと関連付けるバッファ
+		&srvDesc, //先ほど設定したテクスチャ設定情報
+		graphicsContext.descriptorHeap3D.GetCPU(textureData.descriptorHeapIndex)//ヒープのどこに割り当てるか
+	);
+	//--------------------------------------------------
+
+	textureData.height = static_cast<float>(metadata.height);
+	textureData.width = static_cast<float>(metadata.width);
+
+	textureList.push_back(textureData);
+
+	if (uploadBuff) {
+		uploadBuff->Release();
+	}
+
+	return TextureID{ static_cast<uint32_t>(textureList.size() - 1) };
+}
+
+Umi::TextureID Umi::TextureManager::LoadTexture3DRawData(std::vector<uint8_t> data, int width, int height)
+{
+	TextureData textureData;
+
+	TexMetadata metadata = {};
+	metadata.width = width;
+	metadata.height = height;
+	metadata.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	metadata.dimension = TEX_DIMENSION_TEXTURE2D;
+	metadata.arraySize = 1;
+	metadata.mipLevels = 1;
+
+	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
+	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapProp.CreationNodeMask = 0;
+	uploadHeapProp.VisibleNodeMask = 0;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = AlignmentedSize(width, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT) * height;
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.SampleDesc.Quality = 0;
+
+	ID3D12Resource* uploadBuff = nullptr;
+
+	auto result = graphicsContext.device->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&uploadBuff));
+
+
+	D3D12_HEAP_PROPERTIES texHeapProp = {};
+	texHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+	texHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	texHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	texHeapProp.CreationNodeMask = 0;
+	texHeapProp.VisibleNodeMask = 0;
+
+	resDesc.Format = metadata.format;
+	resDesc.Width = metadata.width;
+	resDesc.Height = metadata.height;
+	resDesc.DepthOrArraySize = metadata.arraySize;
+	resDesc.MipLevels = metadata.mipLevels;
+	resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&texHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&textureData.texBuff));
+
+	uint8_t* mapForImg = nullptr;
+	result = uploadBuff->Map(0, nullptr, (void**)&mapForImg);
+	auto srcAddress = data.data();
+	auto rowPitch = AlignmentedSize(width, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	for (int y = 0; y < height; ++y) {
+		std::copy_n(srcAddress,
+			rowPitch,
+			mapForImg);//コピー
+		//1行ごとの辻褄を合わせてやる
+		srcAddress += rowPitch;
+		mapForImg += rowPitch;
+	}
+
+	uploadBuff->Unmap(0, nullptr);
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = uploadBuff;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint.Offset = 0;
+	src.PlacedFootprint.Footprint.Width = metadata.width;
+	src.PlacedFootprint.Footprint.Height = metadata.height;
+	src.PlacedFootprint.Footprint.Depth = metadata.depth;
+	src.PlacedFootprint.Footprint.RowPitch = AlignmentedSize(width, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	src.PlacedFootprint.Footprint.Format = metadata.format;
+
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = textureData.texBuff.Get();
+	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dst.SubresourceIndex = 0;
+
+	ID3D12Fence* fence = nullptr;
+	UINT64 fenceValue = 0;
+	result = graphicsContext.device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
+	graphicsContext.commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+	D3D12_RESOURCE_BARRIER BarrierDesc = {};
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = textureData.texBuff.Get();
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+	graphicsContext.commandList->ResourceBarrier(1, &BarrierDesc);
+	graphicsContext.commandList->Close();
+
+	//コマンドリストの実行
+	ID3D12CommandList* cmdlists[] = { graphicsContext.commandList };
+	graphicsContext.commandQueue->ExecuteCommandLists(1, cmdlists);
+	////待ち
+	graphicsContext.commandQueue->Signal(fence, ++fenceValue);
+
+	if (fence->GetCompletedValue() != fenceValue) {
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		fence->SetEventOnCompletion(fenceValue, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	graphicsContext.commandAllocator->Reset();//キューをクリア
+	graphicsContext.commandList->Reset(graphicsContext.commandAllocator, nullptr);
+
+	//--------------------------------------------------
+	textureData.descriptorHeapIndex = graphicsContext.descriptorHeap3D.Add();
+
+	//通常テクスチャビュー作成
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = metadata.format;//DXGI_FORMAT_R8G8B8A8_UNORM;//RGBA(0.0f～1.0fに正規化)
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;//後述
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2Dテクスチャ
+	srvDesc.Texture2D.MipLevels = 1;//ミップマップは使用しないので1
+
+	graphicsContext.device->CreateShaderResourceView(textureData.texBuff.Get(), //ビューと関連付けるバッファ
+		&srvDesc, //先ほど設定したテクスチャ設定情報
+		graphicsContext.descriptorHeap3D.GetCPU(textureData.descriptorHeapIndex)//ヒープのどこに割り当てるか
+	);
+	//--------------------------------------------------
+
+	textureData.height = static_cast<float>(metadata.height);
+	textureData.width = static_cast<float>(metadata.width);
+
+	textureList.push_back(textureData);
+
+	if (uploadBuff) {
+		uploadBuff->Release();
+	}
+
+	return TextureID{ static_cast<uint32_t>(textureList.size() - 1) };
+}
+
+Umi::TextureID Umi::TextureManager::LoadTexture3DRawData(uint8_t* data, int width, int height)
+{
+	TextureData textureData;
+
+	TexMetadata metadata = {};
+	metadata.width = width;
+	metadata.height = height;
+	metadata.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	metadata.dimension = TEX_DIMENSION_TEXTURE2D;
+	metadata.arraySize = 1;
+	metadata.mipLevels = 1;
+	metadata.depth = 1;
+
+	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
+	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	uploadHeapProp.CreationNodeMask = 0;
+	uploadHeapProp.VisibleNodeMask = 0;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = AlignmentedSize(width * 4, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT) * height;
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.SampleDesc.Quality = 0;
+
+	ID3D12Resource* uploadBuff = nullptr;
+
+	auto result = graphicsContext.device->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&uploadBuff));
+
+
+	D3D12_HEAP_PROPERTIES texHeapProp = {};
+	texHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+	texHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	texHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	texHeapProp.CreationNodeMask = 0;
+	texHeapProp.VisibleNodeMask = 0;
+
+	resDesc.Format = metadata.format;
+	resDesc.Width = metadata.width;
+	resDesc.Height = metadata.height;
+	resDesc.DepthOrArraySize = metadata.arraySize;
+	resDesc.MipLevels = metadata.mipLevels;
+	resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	result = graphicsContext.device->CreateCommittedResource(
+		&texHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&textureData.texBuff));
+
+	uint8_t* mapForImg = nullptr;
+	result = uploadBuff->Map(0, nullptr, (void**)&mapForImg);
+	auto srcAddress = data;
+	auto rowPitch = AlignmentedSize(width * 4, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	auto srcRowSize = width * 4;  // Actual data row size (no padding)
+	for (int y = 0; y < height; ++y) {
+		std::copy_n(srcAddress,
+			srcRowSize,  // Copy only the actual data, not the padded pitch
+			mapForImg);
+		// Add padding in the upload buffer
+		srcAddress += srcRowSize;
+		mapForImg += rowPitch;
+	}
+
+	uploadBuff->Unmap(0, nullptr);
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = uploadBuff;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint.Offset = 0;
+	src.PlacedFootprint.Footprint.Width = metadata.width;
+	src.PlacedFootprint.Footprint.Height = metadata.height;
+	src.PlacedFootprint.Footprint.Depth = metadata.depth;
+	src.PlacedFootprint.Footprint.RowPitch = AlignmentedSize(width * 4, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+	src.PlacedFootprint.Footprint.Format = metadata.format;
+
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = textureData.texBuff.Get();
+	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dst.SubresourceIndex = 0;
+
+	ID3D12Fence* fence = nullptr;
+	UINT64 fenceValue = 0;
+	result = graphicsContext.device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
+	graphicsContext.commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+	D3D12_RESOURCE_BARRIER BarrierDesc = {};
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = textureData.texBuff.Get();
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+	graphicsContext.commandList->ResourceBarrier(1, &BarrierDesc);
+	graphicsContext.commandList->Close();
+
+	//コマンドリストの実行
+	ID3D12CommandList* cmdlists[] = { graphicsContext.commandList };
+	graphicsContext.commandQueue->ExecuteCommandLists(1, cmdlists);
+	////待ち
+	graphicsContext.commandQueue->Signal(fence, ++fenceValue);
+
+	if (fence->GetCompletedValue() != fenceValue) {
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		fence->SetEventOnCompletion(fenceValue, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	graphicsContext.commandAllocator->Reset();//キューをクリア
+	graphicsContext.commandList->Reset(graphicsContext.commandAllocator, nullptr);
+
+	//--------------------------------------------------
+	textureData.descriptorHeapIndex = graphicsContext.descriptorHeap3D.Add();
+
+	//通常テクスチャビュー作成
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = metadata.format;//DXGI_FORMAT_R8G8B8A8_UNORM;//RGBA(0.0f～1.0fに正規化)
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;//後述
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2Dテクスチャ
+	srvDesc.Texture2D.MipLevels = 1;//ミップマップは使用しないので1
+
+	graphicsContext.device->CreateShaderResourceView(textureData.texBuff.Get(), //ビューと関連付けるバッファ
+		&srvDesc, //先ほど設定したテクスチャ設定情報
+		graphicsContext.descriptorHeap3D.GetCPU(textureData.descriptorHeapIndex)//ヒープのどこに割り当てるか
+	);
+	//--------------------------------------------------
+
+	textureData.height = static_cast<float>(metadata.height);
+	textureData.width = static_cast<float>(metadata.width);
+
+	textureList.push_back(textureData);
+
+	if (uploadBuff) {
+		uploadBuff->Release();
+	}
+
+	return TextureID{ static_cast<uint32_t>(textureList.size() - 1) };
+}
+
+void Umi::TextureManager::UnloadTexture(TextureID id)
+{
+	//auto& texData = textureList[static_cast<uint32_t>(id)];
+	//texData.texBuff->Release();
+}
+
+Umi::TextureData& Umi::TextureManager::GetTextureData(TextureID id)
+{
+	return textureList[static_cast<uint32_t>(id)];
 }

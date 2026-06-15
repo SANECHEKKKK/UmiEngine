@@ -4,8 +4,8 @@
     "maxFps": -1,
     "resolutionHeight": 720,
     "resolutionWidth": 1280,
-    "screenHeight": 864,
-    "screenWidth": 1536,
-    "vSyncEnable": false,
+    "screenHeight": 1080,
+    "screenWidth": 1920,
+    "vSyncEnable": true,
     "windowedFullScreenMode": false
 }

@@ -16,8 +16,9 @@ export namespace Umi
 		EngineContext& engineContext;
 		EditorContext& editorContext;
 
-		struct PendingModelAssign { Entity entity; std::string path; };
-		std::vector<PendingModelAssign> pendingAssigns;
+		struct PendingAssign { Entity entity; std::string path; };
+		std::vector<PendingAssign> pendingModelAssigns;
+		std::vector<PendingAssign> pendingTextureAssigns;
 
 	public:
 		void Draw();

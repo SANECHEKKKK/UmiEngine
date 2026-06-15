@@ -9,7 +9,7 @@ export namespace Umi
 	struct ENGINE_API Transform
 	{
 		Vector3 pos;
-		Vector3 rot;	// in radians
+		Vector3 rot;	// in degrees
 		Vector3 scale;
 
 		Transform() : pos(0.0f, 0.0f, 0.0f), scale(1.0f, 1.0f, 1.0f), rot(0.0f, 0.0f, 0.0f) {}

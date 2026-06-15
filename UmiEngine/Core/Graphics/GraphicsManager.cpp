@@ -1051,7 +1051,7 @@ void GraphicsManager::Render2D()
 
 		DirectX::XMMATRIX world =
 			DirectX::XMMatrixScaling(texData.width * transform.scale.x, texData.height * transform.scale.y, 1.0f) *
-			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
+			DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(transform.rot.x)) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(transform.rot.y)) * DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(transform.rot.z)) *
 			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
 
 		SceneMatrix matrices{ world, camera->viewMatrix2D, camera->projectionMatrix2D };

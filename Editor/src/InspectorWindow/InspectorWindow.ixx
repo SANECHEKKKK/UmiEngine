@@ -1,6 +1,7 @@
 module;
 #include <string>
 #include <vector>
+#include <functional>
 export module InspectorWindow;
 
 import EngineContext;
@@ -20,9 +21,12 @@ export namespace Umi
 		std::vector<PendingAssign> pendingModelAssigns;
 		std::vector<PendingAssign> pendingTextureAssigns;
 
+		std::vector<std::function<void()>> deferredActions;
+
 	public:
 		void Draw();
 		void ProcessPending();
+		
 
 		InspectorWindow(EngineContext& engineContext, EditorContext& context);
 	};

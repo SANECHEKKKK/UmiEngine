@@ -19,6 +19,7 @@ import ModelManager;
 import ImGuiManager;
 import InputManager;
 import ScriptManager;
+import LevelManager;
 
 export namespace Umi
 {
@@ -43,6 +44,7 @@ export namespace Umi
 		Umi::ImGuiManager imGuiManager;
 		Umi::InputManager inputManager;
 		Umi::ScriptManager scriptManager { engineContext };
+		Umi::LevelManager levelManager { engineContext };
 
 		bool bootPrefabsLoaded = false;
 

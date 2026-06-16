@@ -24,6 +24,8 @@ import CameraMove;
 import Script;
 import ID;
 
+import LevelManager;
+
 using namespace Umi;
 
 
@@ -145,6 +147,16 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 
 	//HandleSignal(HandleInput());
 
+	if (Keyboard::IsKeyTrigger(KK_P))
+	{
+		levelManager.SaveLevel();
+	}	
+	
+	if (Keyboard::IsKeyTrigger(KK_L))
+	{
+		levelManager.LoadLevel();
+	}
+	
 	accumulator += deltaTime;
 	//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
 	while (accumulator >= kFixedStep)

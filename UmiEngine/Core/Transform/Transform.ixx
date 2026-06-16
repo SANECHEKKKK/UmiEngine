@@ -2,7 +2,7 @@ module;
 #include <EngineApi/EngineApi.h>
 export module Transform;
 
-import Math;
+export import Math;
 
 export namespace Umi
 {

@@ -29,6 +29,7 @@
     <ClCompile Include="Core\Graphics\DescriptorHeap.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsContext.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsManager.cpp" />
+    <ClCompile Include="Core\ID\ID.ixx" />
     <ClCompile Include="Core\Input\InputComponent.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -42,6 +43,8 @@
     <ClCompile Include="Core\Input\Keyboard.ixx" />
     <ClCompile Include="Core\Input\Mouse.cpp" />
     <ClCompile Include="Core\Input\Mouse.ixx" />
+    <ClCompile Include="Core\Level\LevelManager.cpp" />
+    <ClCompile Include="Core\Level\LevelManager.ixx" />
     <ClCompile Include="Core\Material\Material.ixx" />
     <ClCompile Include="Core\Math\Math.ixx" />
     <ClCompile Include="Core\Model\Model.ixx" />

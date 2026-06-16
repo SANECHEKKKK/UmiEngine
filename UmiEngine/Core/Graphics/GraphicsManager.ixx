@@ -217,7 +217,7 @@ export namespace Umi
 
 		//--------3D_MATRIX_CONSTANT_BUFFER--------
 		ComPtr<ID3D12Resource> matrixConstantBuffer3D;
-		SceneMatrix* mapMatrix3D = nullptr;
+		uint8_t* mapMatrix3D = nullptr;
 		//-----------------------------------------
 #pragma endregion 3D
 
@@ -286,6 +286,11 @@ export namespace Umi
 
 		void FlushGPU();
 
+		UINT cb3DCapacity = 0;
+
+		void AllocateMatrixBuffer3D(UINT capacity);
+		void EnsureMatrixCapacity3D(UINT needed);
+		
 	public:
 
 		D3D12_GPU_DESCRIPTOR_HANDLE GetViewportTextureHandle() const noexcept { return viewportSrvGpu; }

@@ -385,28 +385,8 @@ void GraphicsManager::Create3DDescriptorHeap()
 
 void GraphicsManager::Create3DMatrixContantBuffer()
 {
-	auto constBuffHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-	auto constBuffresDesc = CD3DX12_RESOURCE_DESC::Buffer((sizeof(SceneMatrix) + 0xff) & ~0xff);
-
-	auto result = device->CreateCommittedResource(
-		&constBuffHeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&constBuffresDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&matrixConstantBuffer3D)
-	);
-
-
-	result = matrixConstantBuffer3D->Map(0, nullptr, (void**)&mapMatrix3D);
-
-	descriptorHeap3D.Add();
-	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-	cbvDesc.BufferLocation = matrixConstantBuffer3D->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = matrixConstantBuffer3D->GetDesc().Width;
-	device->CreateConstantBufferView(&cbvDesc, descriptorHeap3D[0]);
-
+	descriptorHeap3D.Add();      // reserve slot 0 so texture SRVs stay at slot 1+
+	AllocateMatrixBuffer3D(1024);
 }
 
 void GraphicsManager::Create3DPipelineState()
@@ -1082,6 +1062,13 @@ void GraphicsManager::Render3D()
 	commandList->SetDescriptorHeaps(1, &heap);
 	commandList->SetGraphicsRootDescriptorTable(2, cbvHandle);
 
+	UINT needed = 0;
+	for (auto e : engineContext.registry.View<Model, Transform>()) ++needed;
+	EnsureMatrixCapacity3D(needed);
+
+	const UINT alignedSize = (sizeof(SceneMatrix) + 0xff) & ~0xff;
+	UINT instance = 0;
+	
 	for (auto e : engineContext.registry.View<Model, Transform>())
 	{
 		auto& model = engineContext.registry.GetComponent<Model>(e);
@@ -1096,12 +1083,13 @@ void GraphicsManager::Render3D()
 
 		DirectX::XMMATRIX world =
 			DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z) *
-			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
+			DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(transform.rot.x)) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(transform.rot.y)) * DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(transform.rot.z)) *
 			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
 
 		SceneMatrix matrices{ world, camera->viewMatrix3D, camera->projectionMatrix3D };
-		memcpy(mapMatrix3D, &matrices, sizeof(SceneMatrix));
-		commandList->SetGraphicsRootConstantBufferView(0, matrixConstantBuffer3D.Get()->GetGPUVirtualAddress());
+		const UINT offset = instance * alignedSize;
+		memcpy(mapMatrix3D + offset, &matrices, sizeof(SceneMatrix));
+		commandList->SetGraphicsRootConstantBufferView(0, matrixConstantBuffer3D->GetGPUVirtualAddress() + offset);
 
 		for (auto& mesh : modelData.meshes)
 		{
@@ -1112,6 +1100,8 @@ void GraphicsManager::Render3D()
 
 			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
 		}
+		
+		++instance;
 	}
 }
 
@@ -1344,6 +1334,30 @@ void GraphicsManager::FlushGPU()
 			CloseHandle(event);
 		}
 	}
+}
+
+void GraphicsManager::AllocateMatrixBuffer3D(UINT capacity)
+{
+	const UINT alignedSize = (sizeof(SceneMatrix) + 0xff) & ~0xff;
+
+	if (mapMatrix3D) { matrixConstantBuffer3D->Unmap(0, nullptr); mapMatrix3D = nullptr; }
+
+	auto props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto desc  = CD3DX12_RESOURCE_DESC::Buffer(alignedSize * capacity);
+	device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(matrixConstantBuffer3D.ReleaseAndGetAddressOf()));
+	matrixConstantBuffer3D->Map(0, nullptr, (void**)&mapMatrix3D);
+	cb3DCapacity = capacity;
+}
+
+void GraphicsManager::EnsureMatrixCapacity3D(UINT needed)
+{
+	if (needed <= cb3DCapacity) return;
+	UINT cap = cb3DCapacity ? cb3DCapacity : 1;
+	while (cap < needed) cap *= 2;
+	FlushGPU();                  // old buffer is only referenced by already-finished frames
+	AllocateMatrixBuffer3D(cap);
 }
 
 GraphicsManager::~GraphicsManager()

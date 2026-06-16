@@ -93,6 +93,14 @@ namespace Umi
 			freeEntities.push_back(e);
 		}
 
+		void Clear()
+		{
+			for (auto& pool : pools)
+				pool.reset();
+			freeEntities.clear();
+			maxEntity = static_cast<Entity>(0);
+		}
+		
 		template<typename T>
 		ComponentPool<T>& GetPool()
 		{
@@ -135,6 +143,12 @@ namespace Umi
 		T& GetComponent(Entity e)
 		{
 			return GetPool<T>().Get(e);
+		}
+		
+		template<typename T>
+		void RemoveComponent(Entity e)
+		{
+			GetPool<T>().Destroy(e);
 		}
 
 		template<typename... Components>

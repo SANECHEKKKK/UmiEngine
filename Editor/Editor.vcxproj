@@ -152,7 +152,6 @@
     <ClCompile Include="src\Editor\Editor.ixx" />
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp" />
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.ixx" />
-    <ClCompile Include="src\ID\ID.ixx" />
     <ClCompile Include="src\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="src\ImGui\ImGuiManager.ixx" />
     <ClCompile Include="src\ImGui\imgui_impl_dx12.cpp" />

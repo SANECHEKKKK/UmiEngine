@@ -1,20 +1,40 @@
 module;
 #include <EngineApi/EngineApi.h>
+#include <string>
+#include <filesystem>
+
 export module LevelManager;
 
-import EngineContext;
+import Registry;
+import TextureManager;
+import ModelManager;
 
 export namespace Umi
 {
+    struct CurrentLevel
+    {
+        std::string levelName;
+        std::filesystem::path levelPath;
+    };
+    
     class ENGINE_API LevelManager
     {
     private:
-        EngineContext& engineContext;
-        
+        Registry& registry;
+        TextureManager& textureManager;
+        ModelManager& modelManager;
+
     public:
-        bool SaveLevel();
-        bool LoadLevel();
+        CurrentLevel currentLevel;
         
-        LevelManager(EngineContext& engineContext) :  engineContext(engineContext) {};
+        // Saves to the current level path
+        bool SaveLevel();
+        //Saves to the selected path
+        bool SaveLevel(const std::string& path);
+        
+        bool LoadLevel(const std::string& path);
+        bool CreateLevel(const std::string& path);
+
+        LevelManager(Registry& registry, TextureManager& textureManager, ModelManager& modelManager) : registry(registry), textureManager(textureManager), modelManager(modelManager) {};
     };
 }

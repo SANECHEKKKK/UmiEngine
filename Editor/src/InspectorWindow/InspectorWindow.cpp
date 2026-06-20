@@ -1,5 +1,7 @@
 module;
 #include <ImGui/imgui.h>
+#include <ImGui/imgui_stdlib.h>
+#include "ImGui/imgui_stdlib.cpp"
 #include <string>
 #include <vector>
 #include <functional>
@@ -8,9 +10,12 @@ module InspectorWindow;
 import Entity;
 import Registry;
 import EditorContext;
+import ID;
 import Transform;
 import Model;
 import Texture;
+import Camera;
+import Script;
 
 using namespace Umi;
 
@@ -63,7 +68,21 @@ void InspectorWindow::Draw()
         return;
     }
 
+#pragma region ID
+    if (registry.HasComponent<ID>(entity))
+    {
+        auto& id = registry.GetComponent<ID>(entity);
+        {
+            if (ImGui::CollapsingHeader(("Info##" + std::to_string(static_cast<int>(entity))).c_str(),
+                                        ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::InputText("Tag", &id.tag);
+            }
+        }
+    }
+#pragma endregion ID
 
+#pragma region TRANSFORM
     //-------------------------TRANSFORM-------------------------
     if (registry.HasComponent<Transform>(entity))
     {
@@ -78,8 +97,9 @@ void InspectorWindow::Draw()
         }
     }
     //-----------------------------------------------------------
+#pragma endregion TRANSFORM
 
-
+#pragma region MODEL
     //---------------------------MODEL---------------------------
     if (registry.HasComponent<Model>(entity))
     {
@@ -125,8 +145,9 @@ void InspectorWindow::Draw()
         ImGui::PopID();
     }
     //-----------------------------------------------------------
+#pragma endregion MODEL
 
-
+#pragma region TEXTURE
     //--------------------------TEXTURE--------------------------
     if (registry.HasComponent<Texture>(entity))
     {
@@ -173,6 +194,76 @@ void InspectorWindow::Draw()
         ImGui::PopID();
     }
     //-----------------------------------------------------------
+#pragma endregion TEXTURE
+
+#pragma region CAMERA
+    //-------------------------TRANSFORM-------------------------
+    if (registry.HasComponent<Camera>(entity))
+    {
+        auto& camera = registry.GetComponent<Camera>(entity);
+
+        if (ImGui::CollapsingHeader(("Camera##" + std::to_string(static_cast<int>(entity))).c_str(),
+                                    ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::DragFloat("FOV", &camera.fov, 0.1f);
+            ImGui::DragFloat("NearClip", &camera.nearClip, 0.1f);
+            ImGui::DragFloat("FarClip", &camera.farClip, 10.0f);
+        }
+    }
+    //-----------------------------------------------------------
+#pragma endregion CAMERA
+    
+#pragma region SCRIPT
+    //--------------------------SCRIPT---------------------------
+    // if (registry.HasComponent<Scripts>(entity))
+    // {
+    //     ImGui::PushID("ScriptComponent"); // scopes the popup ID so it won't collide with other components
+    //
+    //     bool open = ImGui::CollapsingHeader("Script",
+    //                                         ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+    //
+    //     const char* dots = "...";
+    //     float dotsW = ImGui::CalcTextSize(dots).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    //     ImGui::SameLine(ImGui::GetContentRegionMax().x - dotsW);
+    //     if (ImGui::SmallButton(dots))
+    //         ImGui::OpenPopup("component_settings");
+    //
+    //     if (ImGui::BeginPopup("component_settings"))
+    //     {
+    //         if (ImGui::MenuItem("Remove Component"))
+    //         {
+    //             deferredActions.push_back([this, entity]()
+    //             {
+    //                 engineContext.registry.RemoveComponent<Scripts>(entity);
+    //             });
+    //         }
+    //         ImGui::EndPopup();
+    //     }
+    //
+    //     if (open)
+    //     {
+    //         auto& scripts = registry.GetComponent<Scripts>(entity);
+    //         for (size_t i = 0; i < scripts.scripts.size(); ++i)
+    //         {
+    //             std::string slot = (scripts.paths[i])
+    //                                    ? "Drop Texture here"
+    //                                    : engineContext.textureManager.GetTextureData(texture.id).filePath;
+    //
+    //             ImGui::Button(slot.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
+    //
+    //             if (ImGui::BeginDragDropTarget())
+    //             {
+    //                 if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("TEXTURE_ASSET"))
+    //                     pendingTextureAssigns.push_back({entity, std::string((const char*)p->Data)});
+    //                 ImGui::EndDragDropTarget();
+    //             }
+    //         }
+    //     }
+    //
+    //     ImGui::PopID();
+    // }
+    //-----------------------------------------------------------
+#pragma endregion SCRIPT
 
 
     //-----------------------ADD COMPONENT-----------------------
@@ -192,8 +283,11 @@ void InspectorWindow::Draw()
         if (!registry.HasComponent<Texture>(entity) && ImGui::MenuItem("Texture"))
             registry.AddComponent<Texture>(entity, Texture{});
 
-        //if (!registry.HasComponent<Camera>(entity) && ImGui::MenuItem("Camera"))
-        //registry.AddComponent<Camera>(entity, Camera{});
+        if (!registry.HasComponent<Camera>(entity) && ImGui::MenuItem("Camera"))
+            registry.AddComponent<Camera>(entity, Camera{});
+
+        // if (!registry.HasComponent<Scripts>(entity) && ImGui::MenuItem("Script"))
+        // registry.AddComponent<Scripts>(entity, Scripts{});
 
         ImGui::EndPopup();
     }

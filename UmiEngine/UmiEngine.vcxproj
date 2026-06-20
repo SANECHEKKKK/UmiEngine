@@ -53,7 +53,7 @@
     <ClCompile Include="Core\Registry\Registry.ixx" />
     <ClCompile Include="Core\Resolution\Resolution.ixx" />
     <ClCompile Include="Core\Script\BasicScript.ixx" />
-    <ClCompile Include="Core\Script\Script.ixx" />
+    <ClCompile Include="Core\Script\Scripts.ixx" />
     <ClCompile Include="Core\Script\ScriptManager.ixx" />
     <ClCompile Include="Core\Settings\Settings.cpp" />
     <ClCompile Include="Core\Settings\Settings.ixx" />

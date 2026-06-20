@@ -9,7 +9,7 @@ export namespace Umi
 		float fov = 90.0f;
 		float nearClip = 0.1f;
 		float farClip = 1000.0f;
-
+		
 		DirectX::XMMATRIX viewMatrix2D;
 		DirectX::XMMATRIX projectionMatrix2D;
 

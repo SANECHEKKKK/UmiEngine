@@ -12,7 +12,7 @@ export namespace Umi
 	class AssetBrowser
 	{
 	private:
-		enum class AssetType { Folder, Texture, Model, Other };
+		enum class AssetType { Folder, Texture, Model, Level, Script, Other };
 
 		EngineContext& engineContext;
 		EditorContext& editorContext;

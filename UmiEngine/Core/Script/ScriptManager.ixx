@@ -46,9 +46,9 @@ export namespace Umi
 
         void Update()
         {
-			for (auto e : engineContext.registry.View<Script>())
+			for (auto e : engineContext.registry.View<Scripts>())
 			{
-				auto& script = engineContext.registry.GetComponent<Script>(e);
+				auto& script = engineContext.registry.GetComponent<Scripts>(e);
 				for (auto& s : script.scripts)
 				{
 					s->Update();

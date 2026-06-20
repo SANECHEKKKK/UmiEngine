@@ -163,6 +163,10 @@
     <ClCompile Include="src\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\InspectorWindow\InspectorWindow.cpp" />
     <ClCompile Include="src\InspectorWindow\InspectorWindow.ixx" />
+    <ClCompile Include="src\ToolBar\ToolBar.cpp" />
+    <ClCompile Include="src\ToolBar\ToolBar.ixx" />
+    <ClCompile Include="src\TopBar\TopBar.cpp" />
+    <ClCompile Include="src\TopBar\TopBar.ixx" />
     <ClCompile Include="src\ViewPortWindow\ViewPort.cpp" />
     <ClCompile Include="src\ViewPortWindow\ViewPort.ixx" />
   </ItemGroup>

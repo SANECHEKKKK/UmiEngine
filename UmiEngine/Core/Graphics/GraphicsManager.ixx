@@ -304,7 +304,8 @@ export namespace Umi
 		void Render();
 		void StartImguiFrame();
 		void FrameEnd();
-
+		
+		CameraManager& GetCameraManager() noexcept { return cameraManager; }
 		GraphicsContext& GetGraphicsContext() noexcept { return graphicsContext; }
 
 		GraphicsManager(HWND hwnd, EngineContext& engineContext);

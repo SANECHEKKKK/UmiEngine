@@ -3,11 +3,12 @@ module;
 #include <windows.h>
 #include <algorithm>
 #include <memory>
+#include <string>
 
 #include <ImGui/imgui_impl_win32.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
-	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #pragma comment (lib, "winmm.lib")
 module Editor;
@@ -17,6 +18,8 @@ import Time;
 import Settings;
 import EditorContext;
 import TextureManager;
+import CameraManager;
+import GraphicsManager;
 import Transform;
 import Camera;
 import Keyboard;
@@ -30,157 +33,188 @@ using namespace Umi;
 
 
 Editor::Editor(HINSTANCE hInstance, const char* title)
-	: window(hInstance, title, engineContext),
-	imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext, window.GetGraphics()),
-	textureManager(window.GetGraphics().GetGraphicsContext()),
-	modelManager(textureManager, window.GetGraphics().GetGraphicsContext())
+    : window(hInstance, title, engineContext),
+      imGuiManager(window.GetHWND(), window.GetGraphics().GetImguiInitInfo(), engineContext, editorContext,
+                   window.GetGraphics()),
+      textureManager(window.GetGraphics().GetGraphicsContext()),
+      modelManager(textureManager, window.GetGraphics().GetGraphicsContext())
 {
-	window.SetMessageHook([](HWND h, UINT m, WPARAM w, LPARAM l) {
-		return ImGui_ImplWin32_WndProcHandler(h, m, w, l) != 0;
-		});
+    window.SetMessageHook([](HWND h, UINT m, WPARAM w, LPARAM l)
+    {
+        return ImGui_ImplWin32_WndProcHandler(h, m, w, l) != 0;
+    });
 
-	//auto e = registry.CreateEntity();
-	//auto textureid = textureManager.LoadTexture2D("Assets/Textures/MainMenu/TitleScreenBG.png");
-	//registry.AddComponent<Texture>(e, { textureid });
-	//registry.AddComponent<Transform>(e, Transform());
-	//registry.AddComponent<ID>(e, ID());
-	////auto& transform = registry.GetComponent<Transform>(e);	
+    //auto e = registry.CreateEntity();
+    //auto textureid = textureManager.LoadTexture2D("Assets/Textures/MainMenu/TitleScreenBG.png");
+    //registry.AddComponent<Texture>(e, { textureid });
+    //registry.AddComponent<Transform>(e, Transform());
+    //registry.AddComponent<ID>(e, ID());
+    ////auto& transform = registry.GetComponent<Transform>(e);	
 
-	//auto b = registry.CreateEntity();
-	//auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
-	////auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
-	//registry.AddComponent<Model>(b, { modelid });
-	//registry.AddComponent<Transform>(b, Transform());
-	//auto& transform = registry.GetComponent<Transform>(b);
-	//transform.pos = { 0, 0, 0 };
-	//transform.scale = { 1.0f, 1.0f, 1.0f };
-	//registry.AddComponent<ID>(b, ID{.name = "PISDA"});
-	////auto& model = registry.GetComponent<Model>(b);
-	////modelManager.GetModelData(model.id).materials[0].baseColor[1] = { 1.0f };
+    //auto b = registry.CreateEntity();
+    //auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
+    ////auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
+    //registry.AddComponent<Model>(b, { modelid });
+    //registry.AddComponent<Transform>(b, Transform());
+    //auto& transform = registry.GetComponent<Transform>(b);
+    //transform.pos = { 0, 0, 0 };
+    //transform.scale = { 1.0f, 1.0f, 1.0f };
+    //registry.AddComponent<ID>(b, ID{.name = "PISDA"});
+    ////auto& model = registry.GetComponent<Model>(b);
+    ////modelManager.GetModelData(model.id).materials[0].baseColor[1] = { 1.0f };
 
-	auto a = registry.CreateEntity();
-	registry.AddComponent<Transform>(a, Transform());
-	registry.AddComponent<Camera>(a, Camera());
-	scriptManager.RegisterScript<CameraMove>("CameraMove");
-	auto script = scriptManager.CreateScript("CameraMove");
-	script->Bind(a, &engineContext);
-	Script cameraMoveScript;
-	cameraMoveScript.scripts.push_back(std::move(script));
-	registry.AddComponent<Script>(a, std::move(cameraMoveScript));
-	registry.AddComponent<ID>(a, ID{.name = "CAMERA"});
-
+    auto a = registry.CreateEntity();
+    registry.AddComponent<Transform>(a, Transform());
+    registry.AddComponent<Camera>(a, Camera());
+    // scriptManager.RegisterScript<CameraMove>("CameraMove");
+    // auto script = scriptManager.CreateScript("CameraMove");
+    // script->Bind(a, &engineContext);
+    // Script cameraMoveScript;
+    // cameraMoveScript.scripts.push_back(std::move(script));
+    // registry.AddComponent<Script>(a, std::move(cameraMoveScript));
+    registry.AddComponent<ID>(a, ID{.name = "EDITOR_CAMERA"});
 }
 
 void Editor::Run()
 {
-	LARGE_INTEGER frequency, lastTime, currentTime;
-	QueryPerformanceFrequency(&frequency);
-	QueryPerformanceCounter(&lastTime);
+    LARGE_INTEGER frequency, lastTime, currentTime;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&lastTime);
 
-	float accumulator = 0.0f;
+    float accumulator = 0.0f;
 
-	MSG msg = {};
-	while (isRunning)
-	{
-		// ── 1. Drain the ENTIRE OS message queue before touching the game ──
-		//    Draining one-per-frame can stall the loop under heavy WM traffic.
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-		{
-			if (msg.message == WM_QUIT)
-				RequestExit();
-			else
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-		}
+    MSG msg = {};
+    while (isRunning)
+    {
+        // ── 1. Drain the ENTIRE OS message queue before touching the game ──
+        //    Draining one-per-frame can stall the loop under heavy WM traffic.
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+                RequestExit();
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
 
-		if (!isRunning)
-			break;
+        if (!isRunning)
+            break;
 
-		// ── 2. Timing ──────────────────────────────────────────────────────
-		QueryPerformanceCounter(&currentTime);
+        // ── 2. Timing ──────────────────────────────────────────────────────
+        QueryPerformanceCounter(&currentTime);
 
-		float rawDelta = static_cast<float>(
-			currentTime.QuadPart - lastTime.QuadPart) /
-			static_cast<float>(frequency.QuadPart);
-		lastTime = currentTime;
+        float rawDelta = static_cast<float>(
+                currentTime.QuadPart - lastTime.QuadPart) /
+            static_cast<float>(frequency.QuadPart);
+        lastTime = currentTime;
 
-		// Spike guard: clamp runaway deltas (debugger pause, OS preemption).
-		float deltaTime = std::min(rawDelta, kMaxDeltaTime);
-		accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime); // Prevent spiral of death from accumulating too much time.
+        // Spike guard: clamp runaway deltas (debugger pause, OS preemption).
+        float deltaTime = std::min(rawDelta, kMaxDeltaTime);
+        accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
+        // Prevent spiral of death from accumulating too much time.
 
-		// ── 3. Frame ───────────────────────────────────────────────────────
-		FrameTick(deltaTime, accumulator);
+        // ── 3. Frame ───────────────────────────────────────────────────────
+        FrameTick(deltaTime, accumulator);
 
-		// ── 4. Frame limiter (sleep, not spin) ────────────────────────────
-		//    Only applied when VSync is off; VSync already throttles us.
-		if (!engineContext.settings.isVSyncEnabled())
-		{
-			const float targetFrameTime = 1.0f / engineContext.settings.getMaxFps();
+        // ── 4. Frame limiter (sleep, not spin) ────────────────────────────
+        //    Only applied when VSync is off; VSync already throttles us.
+        if (!engineContext.settings.isVSyncEnabled())
+        {
+            const float targetFrameTime = 1.0f / engineContext.settings.getMaxFps();
 
-			QueryPerformanceCounter(&currentTime);
-			float elapsed = static_cast<float>(
-				currentTime.QuadPart - lastTime.QuadPart) /
-				static_cast<float>(frequency.QuadPart);
+            QueryPerformanceCounter(&currentTime);
+            float elapsed = static_cast<float>(
+                    currentTime.QuadPart - lastTime.QuadPart) /
+                static_cast<float>(frequency.QuadPart);
 
-			float sleepSeconds = targetFrameTime - elapsed;
-			if (sleepSeconds > 0.002f)
-			{
-				// Sleep(1) undershoots by ~1-2 ms; leave a 2 ms margin
-				// and spin-wait only the last tiny slice.
-				DWORD sleepMs = static_cast<DWORD>((sleepSeconds - 0.002f) * 1000.0f);
-				if (sleepMs > 0)
-					Sleep(sleepMs);
+            float sleepSeconds = targetFrameTime - elapsed;
+            if (sleepSeconds > 0.002f)
+            {
+                // Sleep(1) undershoots by ~1-2 ms; leave a 2 ms margin
+                // and spin-wait only the last tiny slice.
+                DWORD sleepMs = static_cast<DWORD>((sleepSeconds - 0.002f) * 1000.0f);
+                if (sleepMs > 0)
+                    Sleep(sleepMs);
 
-				// Precise spin for the remaining 2 ms margin
-				do { QueryPerformanceCounter(&currentTime); } while (static_cast<float>(currentTime.QuadPart - lastTime.QuadPart) /
-					static_cast<float>(frequency.QuadPart) < targetFrameTime);
-			}
-		}
-	}
+                // Precise spin for the remaining 2 ms margin
+                do { QueryPerformanceCounter(&currentTime); }
+                while (static_cast<float>(currentTime.QuadPart - lastTime.QuadPart) /
+                    static_cast<float>(frequency.QuadPart) < targetFrameTime);
+            }
+        }
+    }
 }
+
+void Editor::EnterPlay()
+{
+    levelManager.SaveLevel();
+    editorContext.playState = PlayState::Play;
+    UseEditorCamera(false);
+}
+
+void Editor::ExitPlay()
+{
+    editorContext.playState = PlayState::Edit;
+    editorContext.selectedEntity = INVALID_ENTITY; // entities are about to be recreated
+    levelManager.LoadLevel(levelManager.currentLevel.levelPath.string());
+    UseEditorCamera(true);
+}
+
+void Editor::ProcessPlayRequests()
+{
+    auto& ec = editorContext;
+    if (ec.requestPlay && ec.playState == PlayState::Edit) EnterPlay();
+    if (ec.requestStop && ec.playState != PlayState::Edit) ExitPlay();
+    if (ec.requestPauseToggle && ec.playState != PlayState::Edit)
+        ec.playState = (ec.playState == PlayState::Play) ? PlayState::Paused : PlayState::Play;
+
+    ec.requestPlay = ec.requestStop = ec.requestPauseToggle = false;
+}
+
 
 void Editor::FrameTick(float deltaTime, float& accumulator)
 {
-	imGuiManager.ProcessDeferred();
+    imGuiManager.ProcessDeferred();
+    ProcessPlayRequests();
 
-	//HandleSignal(HandleInput());
+    //HandleSignal(HandleInput());
 
-	if (Keyboard::IsKeyTrigger(KK_P))
-	{
-		levelManager.SaveLevel();
-	}	
-	
-	if (Keyboard::IsKeyTrigger(KK_L))
-	{
-		levelManager.LoadLevel();
-	}
-	
-	accumulator += deltaTime;
-	//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
-	while (accumulator >= kFixedStep)
-	{
-		//FixedUpdate(kFixedStep);
-		accumulator -= kFixedStep;
-	}
+    if (editorContext.playState == PlayState::Play)
+    {
+        accumulator += deltaTime;
+        //accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
+        while (accumulator >= kFixedStep)
+        {
+            //FixedUpdate(kFixedStep);
+            // scriptManager.Update();
+            accumulator -= kFixedStep;
+        }
+    }
+    const float alpha = accumulator / kFixedStep;
 
-	const float alpha = accumulator / kFixedStep;
+    //HandleSignal(Update(deltaTime));
 
-	//HandleSignal(Update(deltaTime));
-	scriptManager.Update();
+    window.GetGraphics().FrameStart();
+    window.GetGraphics().Render();
+    window.GetGraphics().StartImguiFrame();
+    imGuiManager.Render();
+    window.GetGraphics().FrameEnd();
+    //window.GetGraphics().Clear();
+    //Render(alpha);
+    //imGuiManager.DrawBegin();
+    //RenderImGui();
+    //imGuiManager.DrawEnd();
+    //window.GetGraphics().Present();
 
-	window.GetGraphics().FrameStart();
-	window.GetGraphics().Render();
-	window.GetGraphics().StartImguiFrame();
-	imGuiManager.Render();
-	window.GetGraphics().FrameEnd();
-	//window.GetGraphics().Clear();
-	//Render(alpha);
-	//imGuiManager.DrawBegin();
-	//RenderImGui();
-	//imGuiManager.DrawEnd();
-	//window.GetGraphics().Present();
+    //HandleSignal(HandleEvents());
+}
 
-	//HandleSignal(HandleEvents());
+void Editor::UseEditorCamera(bool set)
+{
+    if (set)
+        window.GetGraphics().GetCameraManager().UseEditorCamera();
+    else
+        window.GetGraphics().GetCameraManager().UseGameCamera();
 }

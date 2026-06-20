@@ -23,46 +23,51 @@ import LevelManager;
 
 export namespace Umi
 {
-	class Editor
-	{
-	private:
-		bool isRunning = true;
+    class Editor
+    {
+    private:
+        bool isRunning = true;
 
-		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
-		static constexpr float kFixedStep = 1.0f / 120.0f;
-		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager, inputManager };
-		Umi::Settings settings;
+        static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
+        static constexpr float kFixedStep = 1.0f / 120.0f;
+        Umi::EngineContext engineContext{registry, settings, textureManager, modelManager, inputManager, levelManager};
+        Umi::Settings settings;
 
-		Umi::Window window;
+        Umi::Window window;
 
-		Umi::EditorContext editorContext;
+        Umi::EditorContext editorContext;
 
-		Umi::Registry registry;
+        Umi::Registry registry;
 
-		Umi::TextureManager textureManager;
-		Umi::ModelManager modelManager;
-		Umi::ImGuiManager imGuiManager;
-		Umi::InputManager inputManager;
-		Umi::ScriptManager scriptManager { engineContext };
-		Umi::LevelManager levelManager { engineContext };
+        Umi::TextureManager textureManager;
+        Umi::ModelManager modelManager;
+        Umi::ImGuiManager imGuiManager;
+        Umi::InputManager inputManager;
+        Umi::ScriptManager scriptManager{engineContext};
+        Umi::LevelManager levelManager{registry, textureManager, modelManager};
 
-		bool bootPrefabsLoaded = false;
+        bool bootPrefabsLoaded = false;
 
-		LARGE_INTEGER currentTime;
-		LARGE_INTEGER lastTime;
-		LARGE_INTEGER frequency;
+        LARGE_INTEGER currentTime;
+        LARGE_INTEGER lastTime;
+        LARGE_INTEGER frequency;
 
-		float elapsed;
+        float elapsed;
 
-		void RequestExit() { isRunning = false; }
+        void RequestExit() { isRunning = false; }
+        
+        void EnterPlay();
+        void ExitPlay();
+        void ProcessPlayRequests();
+        
+        void FrameTick(float deltaTime, float& accumulator);
+    
+        void UseEditorCamera(bool set);
 
-		void FrameTick(float deltaTime, float& accumulator);
-		
-	public:
+    public:
+        void Run();
 
-		void Run();
-
-		Editor(HINSTANCE hInstance, const char* title);
-		~Editor() = default;
-	};
+        Editor(HINSTANCE hInstance, const char* title);
+        ~Editor() = default;
+    };
 }

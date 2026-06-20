@@ -11,6 +11,7 @@ import InspectorWindow;
 import GraphicsManager;
 import HierarchyWindow;
 import AssetBrowser;
+import TopBar;
 
 import Entity;
 
@@ -26,11 +27,14 @@ export namespace Umi
         HierarchyWindow  hierarchyWindow{ engineContext.registry, editorContext };
         InspectorWindow  inspectorWindow{ engineContext, editorContext };
         AssetBrowser     assetBrowser{ engineContext, editorContext };
+	    TopBar           topBar{ engineContext, editorContext };
 
         ID3D12GraphicsCommandList* commandList = nullptr;
 
         void RenderDockingSpace();
         void DrawViewportWindow();
+		void DrawToolbar();
+	    
     public:
         void Render();
         void ProcessDeferred();

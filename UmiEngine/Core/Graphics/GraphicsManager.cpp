@@ -1045,6 +1045,7 @@ void GraphicsManager::Render2D()
 void GraphicsManager::Render3D()
 {
 	Camera* camera = cameraManager.GetMainCamera();
+	if (!camera) return;
 
 	commandList->SetPipelineState(pipelinestate3D.Get());
 

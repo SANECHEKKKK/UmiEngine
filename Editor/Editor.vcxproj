@@ -143,7 +143,9 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Assets\Scripts\CameraMove.ixx" />
+    <ClCompile Include="Assets\Scripts\CameraMove.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="src\AssetBrowser\AssetBrowser.cpp" />
     <ClCompile Include="src\AssetBrowser\AssetBrowser.ixx" />
@@ -181,6 +183,9 @@
     <ClInclude Include="src\ImGui\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Game\Game.vcxproj">
+      <Project>{8aef2a9f-1117-49e4-a4ad-58862ed29480}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\UmiEngine\UmiEngine.vcxproj">
       <Project>{c4723276-ea9d-445a-b529-d23a26a7e61d}</Project>
     </ProjectReference>

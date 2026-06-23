@@ -1,6 +1,7 @@
 export module EditorContext;
 
 import Entity;
+import ScriptManager;
 
 export namespace Umi
 {
@@ -14,5 +15,7 @@ export namespace Umi
 		bool requestPlay = false, requestStop = false, requestPauseToggle = false;
 
 		Entity mainCameraEntity { INVALID_ENTITY };
+		
+		ScriptManager* scriptManager { nullptr };
 	};
 }

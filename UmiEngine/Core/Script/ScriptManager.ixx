@@ -4,12 +4,13 @@ module;
 #include <unordered_map>
 #include <string_view>
 #include <type_traits>
+#include <Windows.h>
 
 #include <EngineApi/EngineApi.h>
 export module ScriptManager;
 #include <string>
 
-import EngineContext;
+import Registry;
 import BasicScript;
 import Script;
 
@@ -18,7 +19,9 @@ export namespace Umi
     class ENGINE_API ScriptManager
     {
     private:
-        EngineContext& engineContext;
+        Registry& registry;
+
+        HMODULE gameModule = nullptr;
 
         struct ScriptType
         {
@@ -27,6 +30,13 @@ export namespace Umi
         std::unordered_map<std::string, ScriptType> types;
 
     public:
+        std::vector<std::string> GetRegisteredNames() const
+        {
+            std::vector<std::string> out;
+            out.reserve(types.size());
+            for (auto& [name, type] : types) out.push_back(name);
+            return out;
+        }
 
         template<typename T>
         void RegisterScript(std::string_view name)
@@ -41,21 +51,46 @@ export namespace Umi
         std::unique_ptr<BasicScript> CreateScript(std::string_view name)
         {
             auto it = types.find(std::string(name));
-            return it == types.end() ? nullptr : it->second.create();
+            if (it == types.end()) return nullptr;
+            auto s = it->second.create();
+            return s;
         }
 
         void Update()
         {
-			for (auto e : engineContext.registry.View<Scripts>())
+			for (auto e : registry.View<Scripts>())
 			{
-				auto& script = engineContext.registry.GetComponent<Scripts>(e);
+				auto& script = registry.GetComponent<Scripts>(e);
 				for (auto& s : script.scripts)
 				{
-					s->Update();
+					s.instance->Update();
 				}
 			}
         }
 
-        ScriptManager(EngineContext& engineContext) : engineContext(engineContext) {}
+        void LoadGameScripts(const std::wstring& dllPath = L"Game.dll")
+        {
+            // if reloading, drop the old one first
+            if (gameModule)
+            {
+                FreeLibrary(gameModule);
+                gameModule = nullptr;
+            }
+
+            types.clear();   // wipe old registrations before re-registering
+
+            gameModule = LoadLibraryW(dllPath.c_str());
+            if (!gameModule)
+                return;       // Game.dll not found next to the exe
+
+            using RegisterFn = void(*)(ScriptManager&);
+            auto registerFn = reinterpret_cast<RegisterFn>(
+                GetProcAddress(gameModule, "RegisterScripts"));
+
+            if (registerFn)
+                registerFn(*this);   // this calls RegisterAllScripts inside the DLL
+        }
+
+        ScriptManager(Registry& registry) : registry(registry) {}
     };
 }

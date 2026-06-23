@@ -9,8 +9,10 @@ import Transform;
 export namespace Umi
 {
 	class ENGINE_API BasicScript
-	{
+	{		
 	protected:
+		friend class InspectorWindow;
+		
 		EngineContext* engineContext;
 
 		void Bind(Entity e, EngineContext* ctx)

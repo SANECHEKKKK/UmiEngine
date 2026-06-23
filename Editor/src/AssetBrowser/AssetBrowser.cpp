@@ -5,6 +5,7 @@ module;
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 module AssetBrowser;
 
 import Registry;
@@ -18,6 +19,15 @@ import Entity;
 
 using namespace Umi;
 namespace fs = std::filesystem;
+
+bool IsValidIdentifier(const std::string& s)
+{
+    if (s.empty()) return false;
+    if (!(std::isalpha((unsigned char)s[0]) || s[0] == '_')) return false;
+    for (char c : s)
+        if (!(std::isalnum((unsigned char)c) || c == '_')) return false;
+    return true;
+}
 
 static bool ContainsCI(const std::string& hay, const std::string& needle)
 {
@@ -47,8 +57,7 @@ AssetBrowser::AssetType AssetBrowser::Classify(const fs::path& p) const
     return AssetType::Other;
 }
 
-void AssetBrowser::Activate(const fs::path& fsPath, const std::string& path,
-                            const std::string& name, AssetType type)
+void AssetBrowser::Activate(const fs::path& fsPath, const std::string& path, const std::string& name, AssetType type)
 {
     if (type == AssetType::Folder)
     {
@@ -140,34 +149,6 @@ void AssetBrowser::Draw()
         default: break;
         }
 
-        if (ImGui::BeginPopupContextWindow("##background",
-                                           ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
-        {
-            if (ImGui::BeginMenu("Create"))
-            {
-                if (ImGui::MenuItem("Folder"))
-                {
-                    if (!fs::create_directory(currentPath / "NewFolder"))
-                    {
-                        for (int i = 1; i < 100; i++)
-                        {
-                            std::string buffer = "NewFolder" + std::to_string(i);
-                            if (fs::create_directory(currentPath / buffer))
-                                break;
-                        }
-                    }
-                }
-
-                if (ImGui::MenuItem("Level"))
-                {
-                    fs::path path = currentPath / "Level.level";
-                    engineContext.levelManager.CreateLevel(path.string());
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndPopup();
-        }
-
         ImGui::Button(tag, ImVec2(cellSize - 18.0f, cellSize - 18.0f));
 
         if (ImGui::BeginPopupContextItem())
@@ -204,6 +185,76 @@ void AssetBrowser::Draw()
 
 
     ImGui::Columns(1);
+    ImGui::Columns(1);
+
+    // Right-click empty space -> Create menu (once, at window scope, no PushID active)
+    if (ImGui::BeginPopupContextWindow("##background",
+        ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+    {
+        if (ImGui::BeginMenu("Create"))
+        {
+            if (ImGui::MenuItem("Folder"))
+            {
+                if (!fs::create_directory(currentPath / "NewFolder"))
+                {
+                    for (int i = 1; i < 100; i++)
+                    {
+                        std::string buffer = "NewFolder" + std::to_string(i);
+                        if (fs::create_directory(currentPath / buffer))
+                            break;
+                    }
+                }
+            }
+
+            if (ImGui::MenuItem("Level"))
+            {
+                fs::path path = currentPath / "Level.level";
+                engineContext.levelManager.CreateLevel(path.string());
+            }
+
+            if (ImGui::MenuItem("Script"))
+            {
+                scriptNameBuf[0] = '\0';
+                createScriptStatus.clear();
+                openCreateScript = true;   // just raise the flag — don't OpenPopup here
+            }
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndPopup();
+    }
+
+    // Create Script dialog — opened AND shown at window scope, so closing the menu can't kill it
+    if (openCreateScript)
+    {
+        ImGui::OpenPopup("Create Script");
+        openCreateScript = false;
+    }
+    if (ImGui::BeginPopupModal("Create Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("New script name:");
+
+        if (ImGui::IsWindowAppearing())
+            ImGui::SetKeyboardFocusHere();
+
+        bool submit = ImGui::InputText("##scriptname", scriptNameBuf, sizeof(scriptNameBuf),
+            ImGuiInputTextFlags_EnterReturnsTrue);
+
+        if (!createScriptStatus.empty())
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", createScriptStatus.c_str());
+
+        if (ImGui::Button("Create") || submit)
+        {
+            if (CreateScriptFile(scriptNameBuf))
+                ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
 }
 
@@ -244,6 +295,56 @@ void AssetBrowser::ProcessPending()
     }
 
     pendingLoads.clear();
+}
+
+bool AssetBrowser::CreateScriptFile(const std::string& name)
+{
+    if (!IsValidIdentifier(name))
+    {
+        createScriptStatus = "Name must be a valid C++ identifier.";
+        return false;
+    }
+
+    std::error_code ec;
+    std::filesystem::path dir = scriptsDir;
+    std::filesystem::create_directories(dir, ec);
+
+    std::filesystem::path file = dir / (name + ".ixx");
+    if (std::filesystem::exists(file))
+    {
+        createScriptStatus = "A script named '" + name + "' already exists.";
+        return false;
+    }
+
+    std::ofstream out(file);
+    if (!out)
+    {
+        createScriptStatus = "Could not write to " + file.string();
+        return false;
+    }
+
+    out << "module;\n"
+        "export module Scripts." << name << ";\n"
+        "\n"
+        "import Engine;\n"
+        "\n"
+        "export namespace Umi\n"
+        "{\n"
+        "    class " << name << " : public BasicScript\n"
+        "    {\n"
+        "    public:\n"
+        "        void Start() override\n" 
+        "        {\n"
+        "           \n"
+        "        }\n"
+        "        void Update() override\n"
+        "        {\n"
+        "           \n"
+        "        }\n"
+        "    };\n"
+        "}\n";
+
+    return true;
 }
 
 AssetBrowser::AssetBrowser(EngineContext& engineContext, EditorContext& editorContext, fs::path root)

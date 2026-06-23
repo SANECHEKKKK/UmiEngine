@@ -9,15 +9,14 @@ import BasicScript;
 
 export namespace Umi
 {
-	// struct Script
-	// {
-	// 	BasicScript script;
-	// 	std::string path;
-	// };
+	struct ENGINE_API ScriptInstance {
+		std::string name;
+		std::unique_ptr<BasicScript> instance;
+	};
 	
 	struct ENGINE_API Scripts
 	{
-		std::vector<std::unique_ptr<BasicScript>> scripts;
+		std::vector<ScriptInstance> scripts;
 
 		Scripts() = default;
 

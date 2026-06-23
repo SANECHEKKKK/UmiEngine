@@ -212,56 +212,45 @@ void InspectorWindow::Draw()
     }
     //-----------------------------------------------------------
 #pragma endregion CAMERA
-    
+
 #pragma region SCRIPT
     //--------------------------SCRIPT---------------------------
-    // if (registry.HasComponent<Scripts>(entity))
-    // {
-    //     ImGui::PushID("ScriptComponent"); // scopes the popup ID so it won't collide with other components
-    //
-    //     bool open = ImGui::CollapsingHeader("Script",
-    //                                         ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
-    //
-    //     const char* dots = "...";
-    //     float dotsW = ImGui::CalcTextSize(dots).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-    //     ImGui::SameLine(ImGui::GetContentRegionMax().x - dotsW);
-    //     if (ImGui::SmallButton(dots))
-    //         ImGui::OpenPopup("component_settings");
-    //
-    //     if (ImGui::BeginPopup("component_settings"))
-    //     {
-    //         if (ImGui::MenuItem("Remove Component"))
-    //         {
-    //             deferredActions.push_back([this, entity]()
-    //             {
-    //                 engineContext.registry.RemoveComponent<Scripts>(entity);
-    //             });
-    //         }
-    //         ImGui::EndPopup();
-    //     }
-    //
-    //     if (open)
-    //     {
-    //         auto& scripts = registry.GetComponent<Scripts>(entity);
-    //         for (size_t i = 0; i < scripts.scripts.size(); ++i)
-    //         {
-    //             std::string slot = (scripts.paths[i])
-    //                                    ? "Drop Texture here"
-    //                                    : engineContext.textureManager.GetTextureData(texture.id).filePath;
-    //
-    //             ImGui::Button(slot.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
-    //
-    //             if (ImGui::BeginDragDropTarget())
-    //             {
-    //                 if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("TEXTURE_ASSET"))
-    //                     pendingTextureAssigns.push_back({entity, std::string((const char*)p->Data)});
-    //                 ImGui::EndDragDropTarget();
-    //             }
-    //         }
-    //     }
-    //
-    //     ImGui::PopID();
-    // }
+     if (registry.HasComponent<Scripts>(entity))
+     {
+         ImGui::PushID("ScriptComponent"); // scopes the popup ID so it won't collide with other components
+    
+         bool open = ImGui::CollapsingHeader("Script",
+                                             ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+        
+         const char* dots = "...";
+         float dotsW = ImGui::CalcTextSize(dots).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+         ImGui::SameLine(ImGui::GetContentRegionMax().x - dotsW);
+         if (ImGui::SmallButton(dots))
+             ImGui::OpenPopup("component_settings");
+    
+         if (ImGui::BeginPopup("component_settings"))
+         {
+             if (ImGui::MenuItem("Remove Component"))
+             {
+                 deferredActions.push_back([this, entity]()
+                 {
+                     engineContext.registry.RemoveComponent<Scripts>(entity);
+                 });
+             }
+             ImGui::EndPopup();
+         }
+    
+         if (open)
+         {
+             auto& scripts = registry.GetComponent<Scripts>(entity);
+             for (auto& script : scripts.scripts)
+             {
+                 ImGui::Button(script.name.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
+             }
+         }
+    
+         ImGui::PopID();
+     }
     //-----------------------------------------------------------
 #pragma endregion SCRIPT
 
@@ -286,12 +275,24 @@ void InspectorWindow::Draw()
         if (!registry.HasComponent<Camera>(entity) && ImGui::MenuItem("Camera"))
             registry.AddComponent<Camera>(entity, Camera{});
 
-        // if (!registry.HasComponent<Scripts>(entity) && ImGui::MenuItem("Script"))
-        // registry.AddComponent<Scripts>(entity, Scripts{});
-
         ImGui::EndPopup();
     }
     //-----------------------------------------------------------
+
+    if (ImGui::Button("Add Script")) ImGui::OpenPopup("add_script");
+    if (ImGui::BeginPopup("add_script"))
+    {
+        for (const std::string& name : editorContext.scriptManager->GetRegisteredNames())
+            if (ImGui::MenuItem(name.c_str()))
+            {
+                if (!registry.HasComponent<Scripts>(entity))
+                    registry.AddComponent<Scripts>(entity, Scripts{});
+                auto inst = editorContext.scriptManager->CreateScript(name);
+                inst->Bind(entity, &engineContext);
+                registry.GetComponent<Scripts>(entity).scripts.push_back({std::string(name), std::move(inst)});
+            }
+        ImGui::EndPopup();
+    }
 
 
     ImGui::End();

@@ -39,6 +39,7 @@
     <ClCompile Include="Core\Input\InputSystem.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Core\Input\InputSystem.ixx" />
     <ClCompile Include="Core\Input\Keyboard.cpp" />
     <ClCompile Include="Core\Input\Keyboard.ixx" />
     <ClCompile Include="Core\Input\Mouse.cpp" />
@@ -70,13 +71,6 @@
   <ItemGroup>
     <ClInclude Include="Core\EngineApi\EngineApi.h" />
     <ClInclude Include="Core\Graphics\d3dx12.h" />
-    <ClInclude Include="Core\Input\InputComponent.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Core\Input\InputSystem.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="Core\Json\json.hpp" />
     <ClInclude Include="Core\Texture\stb_image.h" />
   </ItemGroup>

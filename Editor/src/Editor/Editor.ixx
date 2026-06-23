@@ -30,7 +30,7 @@ export namespace Umi
 
         static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
         static constexpr float kFixedStep = 1.0f / 120.0f;
-        Umi::EngineContext engineContext{registry, settings, textureManager, modelManager, inputManager, levelManager};
+        Umi::EngineContext engineContext{registry, settings, textureManager, modelManager, inputManager, levelManager };
         Umi::Settings settings;
 
         Umi::Window window;
@@ -43,7 +43,7 @@ export namespace Umi
         Umi::ModelManager modelManager;
         Umi::ImGuiManager imGuiManager;
         Umi::InputManager inputManager;
-        Umi::ScriptManager scriptManager{engineContext};
+        Umi::ScriptManager scriptManager{registry};
         Umi::LevelManager levelManager{registry, textureManager, modelManager};
 
         bool bootPrefabsLoaded = false;
@@ -55,13 +55,13 @@ export namespace Umi
         float elapsed;
 
         void RequestExit() { isRunning = false; }
-        
+
         void EnterPlay();
         void ExitPlay();
         void ProcessPlayRequests();
-        
+
         void FrameTick(float deltaTime, float& accumulator);
-    
+
         void UseEditorCamera(bool set);
 
     public:

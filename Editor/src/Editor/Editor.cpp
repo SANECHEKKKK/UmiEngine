@@ -23,7 +23,6 @@ import GraphicsManager;
 import Transform;
 import Camera;
 import Keyboard;
-import CameraMove;
 import Script;
 import ID;
 
@@ -44,35 +43,9 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
         return ImGui_ImplWin32_WndProcHandler(h, m, w, l) != 0;
     });
 
-    //auto e = registry.CreateEntity();
-    //auto textureid = textureManager.LoadTexture2D("Assets/Textures/MainMenu/TitleScreenBG.png");
-    //registry.AddComponent<Texture>(e, { textureid });
-    //registry.AddComponent<Transform>(e, Transform());
-    //registry.AddComponent<ID>(e, ID());
-    ////auto& transform = registry.GetComponent<Transform>(e);	
+    editorContext.scriptManager = &scriptManager;
 
-    //auto b = registry.CreateEntity();
-    //auto modelid = modelManager.LoadModel("Assets/Models/Tree/Tree.fbx");
-    ////auto modelid = modelManager.LoadModel("Assets/Models/AL_Standard.fbx");
-    //registry.AddComponent<Model>(b, { modelid });
-    //registry.AddComponent<Transform>(b, Transform());
-    //auto& transform = registry.GetComponent<Transform>(b);
-    //transform.pos = { 0, 0, 0 };
-    //transform.scale = { 1.0f, 1.0f, 1.0f };
-    //registry.AddComponent<ID>(b, ID{.name = "PISDA"});
-    ////auto& model = registry.GetComponent<Model>(b);
-    ////modelManager.GetModelData(model.id).materials[0].baseColor[1] = { 1.0f };
-
-    auto a = registry.CreateEntity();
-    registry.AddComponent<Transform>(a, Transform());
-    registry.AddComponent<Camera>(a, Camera());
-    // scriptManager.RegisterScript<CameraMove>("CameraMove");
-    // auto script = scriptManager.CreateScript("CameraMove");
-    // script->Bind(a, &engineContext);
-    // Script cameraMoveScript;
-    // cameraMoveScript.scripts.push_back(std::move(script));
-    // registry.AddComponent<Script>(a, std::move(cameraMoveScript));
-    registry.AddComponent<ID>(a, ID{.name = "EDITOR_CAMERA"});
+    scriptManager.LoadGameScripts();
 }
 
 void Editor::Run()
@@ -188,7 +161,7 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
         while (accumulator >= kFixedStep)
         {
             //FixedUpdate(kFixedStep);
-            // scriptManager.Update();
+             scriptManager.Update();
             accumulator -= kFixedStep;
         }
     }

@@ -3,7 +3,7 @@ module;
 export module BasicScript;
 
 import Entity;
-import EngineContext;
+import Registry;
 import Transform;
 
 export namespace Umi
@@ -11,35 +11,36 @@ export namespace Umi
 	class ENGINE_API BasicScript
 	{		
 	protected:
-		friend class InspectorWindow;
-		
-		EngineContext* engineContext;
+		friend class ScriptManager;
 
-		void Bind(Entity e, EngineContext* ctx)
+		
+		Registry* registry;
+
+		void Bind(Entity e, Registry* reg)
 		{
 			entity = e;
-			engineContext = ctx;
+			registry = reg;
 		}
 
 		template<typename T>
 		T& GetComponent()
 		{
-			return engineContext->registry.GetComponent<T>(entity);
+			return registry->GetComponent<T>(entity);
 		}
 		
 		template<typename T>
 		T& GetComponent(BasicScript* script)
 		{
-			return engineContext->registry.GetComponent<T>(script->entity);
+			return registry->GetComponent<T>(script->entity);
 		}
 
 
 	public:
-		friend class Editor;
+		//friend class Editor;
 
 		Entity entity;
 
-		Transform& transform() { return engineContext->registry.GetComponent<Transform>(entity); };	
+		Transform& transform() { return registry->GetComponent<Transform>(entity); };	
 
 		virtual void Start() {};
 		virtual void Update() {};

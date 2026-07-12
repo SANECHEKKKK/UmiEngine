@@ -87,6 +87,7 @@ void ImGuiManager::Render()
     inspectorWindow.Draw();
     hierarchyWindow.Draw();
     assetBrowser.Draw();
+    errorWindow.Draw();
     DrawViewportWindow();
     DrawToolbar();
 

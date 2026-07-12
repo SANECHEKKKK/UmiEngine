@@ -209,7 +209,7 @@ void AssetBrowser::Draw()
             if (ImGui::MenuItem("Level"))
             {
                 fs::path path = currentPath / "Level.level";
-                engineContext.levelManager.CreateLevel(path.string());
+                editorContext.levelManager->CreateLevel(path.string());
             }
 
             if (ImGui::MenuItem("Script"))
@@ -286,7 +286,7 @@ void AssetBrowser::ProcessPending()
                 break;
             }
         case AssetType::Level:
-            engineContext.levelManager.LoadLevel(p.path);
+            editorContext.levelManager->LoadLevel(p.path);
             break;
 
         default:

@@ -23,6 +23,17 @@ export namespace Umi
 
 		std::vector<std::function<void()>> deferredActions;
 
+		void DrawID(Entity entity);
+		void DrawTransform(Entity entity);
+		void DrawModel(Entity entity);
+		void DrawTexture(Entity entity);
+		void DrawCamera(Entity entity);
+		void DrawScript(Entity entity);
+		void DrawColliderBox(Entity entity);
+
+		void DrawAddComponentButton(Entity entity);
+		void DrawAddScriptButton(Entity entity);
+
 	public:
 		void Draw();
 		void ProcessPending();

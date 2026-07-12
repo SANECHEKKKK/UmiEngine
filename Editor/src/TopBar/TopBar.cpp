@@ -12,7 +12,7 @@ void TopBar::Draw()
         {
             if (ImGui::MenuItem("Save"))
             {
-                engineContext.levelManager.SaveLevel();
+                editorContext.levelManager->SaveLevel();
             }
                         
             ImGui::EndMenu();
@@ -27,6 +27,9 @@ void TopBar::Draw()
             // if (ImGui::MenuItem("Paste", "Ctrl+V")) {}
             ImGui::EndMenu();
         }
+
+        ImGui::Checkbox("Show Colliders", &editorContext.showColliders);
+
         ImGui::EndMainMenuBar();
     }
 }

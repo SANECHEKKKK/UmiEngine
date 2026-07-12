@@ -31,6 +31,7 @@ import Texture;
 import Model;
 import Transform;
 import Camera;
+import ColliderBox;
 
 std::filesystem::path GetExecutableDir() {
 	wchar_t path[MAX_PATH];
@@ -553,6 +554,190 @@ void GraphicsManager::Create3DPipelineState()
 
 }
 //------------------------------------------
+
+//--------------------DEBUG--------------------
+void GraphicsManager::LoadDebugShaders()
+{
+	auto result = D3DReadFileToBlob(
+		(GetExecutableDir() / "DebugVertexShader.cso").wstring().c_str(),
+		&vertexShaderBlobDebug);
+	if (FAILED(result))
+		Error::FatalError("Failed to load debug vertex shader .cso.");
+
+	result = D3DReadFileToBlob(
+		(GetExecutableDir() / "DebugPixelShader.cso").wstring().c_str(),
+		&pixelShaderBlobDebug);
+	if (FAILED(result))
+		Error::FatalError("Failed to load debug pixel shader .cso.");
+}
+
+void GraphicsManager::CreateDebugBoxBuffers()
+{
+	// Unit cube centered on origin, half-extent 0.5 — so scaling by
+	// collider.size puts corners at exactly +-size*0.5, matching the
+	// `half = size * 0.5f` used in CollisionManager's AABB math.
+	const DebugVertex corners[8] = {
+		{{-0.5f,-0.5f,-0.5f}}, {{ 0.5f,-0.5f,-0.5f}}, {{ 0.5f, 0.5f,-0.5f}}, {{-0.5f, 0.5f,-0.5f}}, // back
+		{{-0.5f,-0.5f, 0.5f}}, {{ 0.5f,-0.5f, 0.5f}}, {{ 0.5f, 0.5f, 0.5f}}, {{-0.5f, 0.5f, 0.5f}}, // front
+	};
+
+	// 12 edges = 24 indices
+	const unsigned short edges[24] = {
+		0,1, 1,2, 2,3, 3,0,   // back face
+		4,5, 5,6, 6,7, 7,4,   // front face
+		0,4, 1,5, 2,6, 3,7,   // verticals
+	};
+
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto vbDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(corners));
+	if (device->CreateCommittedResource(
+		&heapProps, D3D12_HEAP_FLAG_NONE, &vbDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(&vertexBufferDebug)) != S_OK)
+		Error::FatalError("Failed to create debug vertex buffer.");
+
+	DebugVertex* vertMap = nullptr;
+	vertexBufferDebug->Map(0, nullptr, (void**)&vertMap);
+	std::copy(std::begin(corners), std::end(corners), vertMap);
+	vertexBufferDebug->Unmap(0, nullptr);
+
+	vertexBufferViewDebug.BufferLocation = vertexBufferDebug->GetGPUVirtualAddress();
+	vertexBufferViewDebug.SizeInBytes = sizeof(corners);
+	vertexBufferViewDebug.StrideInBytes = sizeof(DebugVertex);
+
+	auto ibDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(edges));
+	if (device->CreateCommittedResource(
+		&heapProps, D3D12_HEAP_FLAG_NONE, &ibDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(&indexBufferDebug)) != S_OK)
+		Error::FatalError("Failed to create debug index buffer.");
+
+	unsigned short* idxMap = nullptr;
+	indexBufferDebug->Map(0, nullptr, (void**)&idxMap);
+	std::copy(std::begin(edges), std::end(edges), idxMap);
+	indexBufferDebug->Unmap(0, nullptr);
+
+	indexBufferViewDebug.BufferLocation = indexBufferDebug->GetGPUVirtualAddress();
+	indexBufferViewDebug.Format = DXGI_FORMAT_R16_UINT;
+	indexBufferViewDebug.SizeInBytes = sizeof(edges);
+}
+
+void GraphicsManager::CreateDebugPipelineState()
+{
+	LoadDebugShaders();
+	CreateDebugBoxBuffers();
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+		  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	};
+
+	// SceneMatrix = 3 XMMATRIX = 192 bytes = 48 DWORDs. Root constants avoid
+	// any per-frame CB allocation; 48 + 4 = 52 DWORDs, under the 64 limit.
+	CD3DX12_ROOT_PARAMETER rootparam[2] = {};
+	rootparam[0].InitAsConstants(48, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX); // b0: world/view/proj
+	rootparam[1].InitAsConstants(4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);  // b1: color
+
+	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rsDesc.pParameters = rootparam;
+	rsDesc.NumParameters = 2;
+	rsDesc.pStaticSamplers = nullptr;   // no textures in the debug pass
+	rsDesc.NumStaticSamplers = 0;
+
+	ComPtr<ID3DBlob> rsBlob, errBlob;
+	auto result = D3D12SerializeRootSignature(
+		&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rsBlob, &errBlob);
+	if (FAILED(result))
+	{
+		std::string errorMessage;
+		if (errBlob)
+		{
+			errorMessage.resize(errBlob->GetBufferSize());
+			std::copy_n(static_cast<char*>(errBlob->GetBufferPointer()),
+				errBlob->GetBufferSize(), errorMessage.begin());
+		}
+		Error::FatalError("Failed to serialize debug root signature. " + errorMessage);
+	}
+
+	if (device->CreateRootSignature(0, rsBlob->GetBufferPointer(),
+		rsBlob->GetBufferSize(), IID_PPV_ARGS(&rootsignatureDebug)) != S_OK)
+		Error::FatalError("Failed to create debug root signature.");
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeline = {};
+	gpipeline.pRootSignature = rootsignatureDebug.Get();
+	gpipeline.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlobDebug.Get());
+	gpipeline.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlobDebug.Get());
+
+	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+	gpipeline.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	gpipeline.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;  // lines have no facing
+
+	// Depth-test ON so a box behind a wall is correctly occluded,
+	// depth-write OFF so debug lines never pollute the depth buffer.
+	gpipeline.DepthStencilState.DepthEnable = TRUE;
+	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	gpipeline.DepthStencilState.StencilEnable = FALSE;
+	gpipeline.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
+	gpipeline.InputLayout.pInputElementDescs = inputLayout;
+	gpipeline.InputLayout.NumElements = _countof(inputLayout);
+
+	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+
+	// THE important line — without LINE here, IASetPrimitiveTopology(LINELIST)
+	// throws a validation error and nothing draws.
+	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+
+	gpipeline.NumRenderTargets = 1;
+	gpipeline.RTVFormats[0] = viewportColorFormat;
+	gpipeline.SampleDesc.Count = 1;
+	gpipeline.SampleDesc.Quality = 0;
+
+	if (device->CreateGraphicsPipelineState(
+		&gpipeline, IID_PPV_ARGS(&pipelinestateDebug)) != S_OK)
+		Error::FatalError("Failed to create debug pipeline state.");
+}
+
+void GraphicsManager::RenderDebugColliders()
+{
+	Camera* camera = cameraManager.GetMainCamera();
+	if (!camera) return;
+
+	commandList->SetPipelineState(pipelinestateDebug.Get());
+	commandList->SetGraphicsRootSignature(rootsignatureDebug.Get());
+
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	commandList->IASetVertexBuffers(0, 1, &vertexBufferViewDebug);
+	commandList->IASetIndexBuffer(&indexBufferViewDebug);
+
+	const float green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+	commandList->SetGraphicsRoot32BitConstants(1, 4, green, 0);
+
+	for (auto e : engineContext.registry.View<Transform, ColliderBox>())
+	{
+		auto& collider = engineContext.registry.GetComponent<ColliderBox>(e);
+
+		// AABB: no rotation, by definition. Scale then translate.
+		DirectX::XMMATRIX world =
+			DirectX::XMMatrixScaling(collider.size.x, collider.size.y, collider.size.z) *
+			DirectX::XMMatrixTranslation(collider.worldPosition.x,
+				collider.worldPosition.y,
+				collider.worldPosition.z);
+
+		SceneMatrix matrices{ world, camera->viewMatrix3D, camera->projectionMatrix3D };
+		commandList->SetGraphicsRoot32BitConstants(0, 48, &matrices, 0);
+
+		commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
+	}
+}
+//---------------------------------------------
 
 void GraphicsManager::CreateViewportTargets(uint32_t width, uint32_t height)
 {
@@ -1113,6 +1298,9 @@ void GraphicsManager::Render()
 	Render2D();
 	Render3D();
 
+	if (showColliders)
+		RenderDebugColliders();
+
 	auto toSRV = CD3DX12_RESOURCE_BARRIER::Transition(
 		peraResource.Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -1303,6 +1491,10 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 
 	//------------------3D------------------
 	Create3DPipelineState();
+	//--------------------------------------
+
+	//----------------DEBUG-----------------
+	CreateDebugPipelineState();
 	//--------------------------------------
 
 	//-----------------PERA-----------------

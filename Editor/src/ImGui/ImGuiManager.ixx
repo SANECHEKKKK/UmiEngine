@@ -5,13 +5,14 @@ export module ImGuiManager;
 
 import Registry;
 import EditorContext;
-import EngineContext;     // NEW
+import EngineContext;
 
 import InspectorWindow;
 import GraphicsManager;
 import HierarchyWindow;
 import AssetBrowser;
 import TopBar;
+import ErrorWindow;
 
 import Entity;
 
@@ -28,6 +29,7 @@ export namespace Umi
         InspectorWindow  inspectorWindow{ engineContext, editorContext };
         AssetBrowser     assetBrowser{ engineContext, editorContext };
 	    TopBar           topBar{ engineContext, editorContext };
+	    ErrorWindow      errorWindow{ engineContext, editorContext };
 
         ID3D12GraphicsCommandList* commandList = nullptr;
 

@@ -20,54 +20,61 @@ import ImGuiManager;
 import InputManager;
 import ScriptManager;
 import LevelManager;
+import CollisionManager;
+
+import InputSystem;
 
 export namespace Umi
 {
-    class Editor
-    {
-    private:
-        bool isRunning = true;
+	class Editor
+	{
+	private:
+		bool isRunning = true;
 
-        static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
-        static constexpr float kFixedStep = 1.0f / 120.0f;
-        Umi::EngineContext engineContext{registry, settings, textureManager, modelManager, inputManager, levelManager };
-        Umi::Settings settings;
+		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
+		static constexpr float kFixedStep = 1.0f / 120.0f;
+		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager, inputManager };
+		Umi::Settings settings;
 
-        Umi::Window window;
+		Umi::Window window;
 
-        Umi::EditorContext editorContext;
+		Umi::EditorContext editorContext;
 
-        Umi::Registry registry;
+		Umi::Registry registry;
 
-        Umi::TextureManager textureManager;
-        Umi::ModelManager modelManager;
-        Umi::ImGuiManager imGuiManager;
-        Umi::InputManager inputManager;
-        Umi::ScriptManager scriptManager{registry};
-        Umi::LevelManager levelManager{registry, textureManager, modelManager};
+		Umi::TextureManager textureManager;
+		Umi::ModelManager modelManager;
+		Umi::ImGuiManager imGuiManager;
+		Umi::InputManager inputManager;
+		Umi::ScriptManager scriptManager{ registry };
+		Umi::LevelManager levelManager{ registry, textureManager, modelManager, scriptManager };
 
-        bool bootPrefabsLoaded = false;
+		Umi::InputSystem inputSystem;
 
-        LARGE_INTEGER currentTime;
-        LARGE_INTEGER lastTime;
-        LARGE_INTEGER frequency;
+		Umi::CollisionManager collisionManager{ registry };
 
-        float elapsed;
+		bool bootPrefabsLoaded = false;
 
-        void RequestExit() { isRunning = false; }
+		LARGE_INTEGER currentTime;
+		LARGE_INTEGER lastTime;
+		LARGE_INTEGER frequency;
 
-        void EnterPlay();
-        void ExitPlay();
-        void ProcessPlayRequests();
+		float elapsed;
 
-        void FrameTick(float deltaTime, float& accumulator);
+		void RequestExit() { isRunning = false; }
 
-        void UseEditorCamera(bool set);
+		void EnterPlay();
+		void ExitPlay();
+		void ProcessPlayRequests();
 
-    public:
-        void Run();
+		void FrameTick(float deltaTime, float& accumulator);
 
-        Editor(HINSTANCE hInstance, const char* title);
-        ~Editor() = default;
-    };
+		void UseEditorCamera(bool set);
+
+	public:
+		void Run();
+
+		Editor(HINSTANCE hInstance, const char* title);
+		~Editor() = default;
+	};
 }

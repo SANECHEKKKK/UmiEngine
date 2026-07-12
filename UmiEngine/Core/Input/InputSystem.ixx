@@ -9,11 +9,12 @@ export namespace Umi
 {
     class ENGINE_API InputSystem
     {
-    private:
+    protected:
+        friend class Editor;
+        void Update();
 
     public:
-        Vector3 inputVelocity{};
-        
-        void Update();
+        inline static Vector3 inputVelocity;
+        inline static float inputRotation;      //rotation in radians
     };
 }

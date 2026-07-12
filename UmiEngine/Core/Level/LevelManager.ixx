@@ -8,6 +8,7 @@ export module LevelManager;
 import Registry;
 import TextureManager;
 import ModelManager;
+import ScriptManager;
 
 export namespace Umi
 {
@@ -23,6 +24,7 @@ export namespace Umi
         Registry& registry;
         TextureManager& textureManager;
         ModelManager& modelManager;
+        ScriptManager& scriptManager;
 
     public:
         CurrentLevel currentLevel;
@@ -35,6 +37,6 @@ export namespace Umi
         bool LoadLevel(const std::string& path);
         bool CreateLevel(const std::string& path);
 
-        LevelManager(Registry& registry, TextureManager& textureManager, ModelManager& modelManager) : registry(registry), textureManager(textureManager), modelManager(modelManager) {};
+        LevelManager(Registry& registry, TextureManager& textureManager, ModelManager& modelManager, ScriptManager& scriptManager) : registry(registry), textureManager(textureManager), modelManager(modelManager), scriptManager(scriptManager) {};
     };
 }

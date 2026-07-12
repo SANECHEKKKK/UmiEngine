@@ -31,6 +31,11 @@ export namespace Umi
 		//DirectX::XMFLOAT3 eye;
 	};
 
+	struct DebugVertex
+	{
+		DirectX::XMFLOAT3 pos;
+	};
+
 	struct ENGINE_API DescriptorHeapAllocator {
 		ID3D12DescriptorHeap* heap = nullptr;
 		D3D12_DESCRIPTOR_HEAP_TYPE  type{};
@@ -221,6 +226,25 @@ export namespace Umi
 		//-----------------------------------------
 #pragma endregion 3D
 
+#pragma region Debug
+		ComPtr<ID3DBlob>            vertexShaderBlobDebug = nullptr;
+		ComPtr<ID3DBlob>            pixelShaderBlobDebug = nullptr;
+		ComPtr<ID3D12RootSignature> rootsignatureDebug = nullptr;
+		ComPtr<ID3D12PipelineState> pipelinestateDebug = nullptr;
+
+		ComPtr<ID3D12Resource>   vertexBufferDebug = nullptr;
+		D3D12_VERTEX_BUFFER_VIEW vertexBufferViewDebug = {};
+		ComPtr<ID3D12Resource>   indexBufferDebug = nullptr;
+		D3D12_INDEX_BUFFER_VIEW  indexBufferViewDebug = {};
+
+		bool showColliders = false;   // editor-only; game never flips this
+
+		void LoadDebugShaders();
+		void CreateDebugBoxBuffers();
+		void CreateDebugPipelineState();
+		void RenderDebugColliders();
+#pragma endregion Debug
+
 #pragma region ImGui
 		//-------------EDITOR_VIEWPORT-------------
 		D3D12_CPU_DESCRIPTOR_HANDLE viewportSrvCpu{};
@@ -280,7 +304,6 @@ export namespace Umi
 		void Create3DPipelineState();
 		//----------------------------------
 
-
 		void Render2D();
 		void Render3D();
 
@@ -292,6 +315,10 @@ export namespace Umi
 		void EnsureMatrixCapacity3D(UINT needed);
 		
 	public:
+		//---------------Debug--------------
+		void SetShowColliders(bool show) noexcept { showColliders = show; }
+		bool GetShowColliders() const noexcept { return showColliders; }
+		//----------------------------------
 
 		D3D12_GPU_DESCRIPTOR_HANDLE GetViewportTextureHandle() const noexcept { return viewportSrvGpu; }
 		void RequestViewportResize(uint32_t width, uint32_t height);

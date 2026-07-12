@@ -13,6 +13,7 @@ export module ScriptManager;
 import Registry;
 import BasicScript;
 import Script;
+import Entity;
 
 export namespace Umi
 {
@@ -90,6 +91,19 @@ export namespace Umi
             if (registerFn)
                 registerFn(*this);   // this calls RegisterAllScripts inside the DLL
         }
+
+		void AddScriptToEntity(Entity e, std::string_view name)
+		{
+			auto script = CreateScript(name);
+			if (!script) return;
+
+			script->Bind(e, &registry);
+
+			if (!registry.HasComponent<Scripts>(e))
+				registry.AddComponent<Scripts>(e, Scripts{});
+
+			registry.GetComponent<Scripts>(e).scripts.push_back({ std::string(name), std::move(script) });
+		}
 
         ScriptManager(Registry& registry) : registry(registry) {}
     };

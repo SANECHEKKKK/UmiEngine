@@ -11,13 +11,17 @@ import Texture;
 import Model;
 import ID;
 import Camera;
+import ColliderBox;
+
+import Script;
+
 import Error;
 
 using namespace Umi;
 
 namespace
 {
-    constexpr uint32_t LevelMagic = 0x4C564D55; // "UMVL" read as little-endian bytes
+    constexpr uint32_t LevelMagic = 0x4C564D55;
     constexpr uint32_t LevelVersion = 1;
 
     enum class ComponentFlag : uint8_t
@@ -27,7 +31,21 @@ namespace
         Texture = 1 << 2,
         Model = 1 << 3,
         Camera = 1 << 4,
+		ColliderBox = 1 << 5,
+		Script = 1 << 6
     };
+
+	void WriteInt(std::ofstream& file, const int& v)
+	{
+		file.write(reinterpret_cast<const char*>(&v), sizeof(int));
+	}
+
+	int ReadInt(std::ifstream& file)
+	{
+		int v{};
+		file.read(reinterpret_cast<char*>(&v), sizeof(int));
+		return v;
+	}
 
     void WriteString(std::ofstream& file, const std::string& str)
     {
@@ -75,19 +93,18 @@ bool LevelManager::SaveLevel()
     std::ofstream file(currentLevel.levelPath, std::ios::binary);
     if (!file.is_open())
     {
-        // handle non fatal error
+        Error::NonFatalError("Failed to open level file for writing.");
         return false;
     }
 
     file.write(reinterpret_cast<const char*>(&LevelMagic), sizeof(LevelMagic));
     file.write(reinterpret_cast<const char*>(&LevelVersion), sizeof(LevelVersion));
 
-    // Collect valid entities first so the count we write up front is accurate
     std::vector<Entity> entities;
     for (Entity e = static_cast<Entity>(0); e < registry.maxEntity; e++)
     {
         if (registry.HasComponent<ID>(e) || registry.HasComponent<Transform>(e) ||
-            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e))
+            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e) || registry.HasComponent<Camera>(e) || registry.HasComponent<ColliderBox>(e) || registry.HasComponent<Scripts>(e))
         {
             entities.push_back(e);
         }
@@ -104,6 +121,8 @@ bool LevelManager::SaveLevel()
         if (registry.HasComponent<Texture>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Texture);
         if (registry.HasComponent<Model>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Model);
         if (registry.HasComponent<Camera>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Camera);
+		if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ColliderBox);
+        if (registry.HasComponent<Scripts>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Script);
 
         file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
 
@@ -139,6 +158,23 @@ bool LevelManager::SaveLevel()
             WriteFloat(file, t.nearClip);
             WriteFloat(file, t.farClip);
         }
+
+        if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
+        {
+            ColliderBox t = registry.GetComponent<ColliderBox>(e);
+            WriteVector3(file, t.localPosition);
+            WriteVector3(file, t.localRotation);
+            WriteVector3(file, t.localScale);
+        }
+
+        if (flags & static_cast<uint8_t>(ComponentFlag::Script))
+        {
+            WriteInt(file, registry.GetComponent<Scripts>(e).scripts.size());
+            for (const auto& t : registry.GetComponent<Scripts>(e).scripts)
+            {
+                WriteString(file, t.name);
+            }
+        }
     }
 
     return true;
@@ -149,19 +185,19 @@ bool LevelManager::SaveLevel(const std::string& path)
     std::ofstream file(path, std::ios::binary);
     if (!file.is_open())
     {
-        // handle non fatal error
+        Error::NonFatalError("Failed to open level file for writing.");
         return false;
     }
 
     file.write(reinterpret_cast<const char*>(&LevelMagic), sizeof(LevelMagic));
     file.write(reinterpret_cast<const char*>(&LevelVersion), sizeof(LevelVersion));
 
-    // Collect valid entities first so the count we write up front is accurate
+    // Collect valid entities first
     std::vector<Entity> entities;
     for (Entity e = static_cast<Entity>(0); e < registry.maxEntity; e++)
     {
         if (registry.HasComponent<ID>(e) || registry.HasComponent<Transform>(e) ||
-            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e))
+            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e) || registry.HasComponent<Camera>(e) || registry.HasComponent<ColliderBox>(e) || registry.HasComponent<Scripts>(e))
         {
             entities.push_back(e);
         }
@@ -177,6 +213,9 @@ bool LevelManager::SaveLevel(const std::string& path)
         if (registry.HasComponent<Transform>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Transform);
         if (registry.HasComponent<Texture>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Texture);
         if (registry.HasComponent<Model>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Model);
+		if (registry.HasComponent<Camera>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Camera);
+		if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ColliderBox);
+		if (registry.HasComponent<Scripts>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Script);
 
         file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
 
@@ -208,6 +247,21 @@ bool LevelManager::SaveLevel(const std::string& path)
             WriteFloat(file, t.nearClip);
             WriteFloat(file, t.farClip);
         }
+        if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
+        {
+            ColliderBox t = registry.GetComponent<ColliderBox>(e);
+            WriteVector3(file, t.localPosition);
+            WriteVector3(file, t.localRotation);
+            WriteVector3(file, t.localScale);
+        }
+        if (flags & static_cast<uint8_t>(ComponentFlag::Script))
+        {
+            WriteInt(file, registry.GetComponent<Scripts>(e).scripts.size());
+            for (const auto& t : registry.GetComponent<Scripts>(e).scripts)
+            {
+                WriteString(file, t.name);
+            }
+        }   
     }
 
     return true;
@@ -220,7 +274,7 @@ bool LevelManager::LoadLevel(const std::string& path)
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open())
     {
-        // handle non fatal error
+        Error::NonFatalError("Failed to open level file for reading.");
         return false;
     }
 
@@ -228,7 +282,7 @@ bool LevelManager::LoadLevel(const std::string& path)
     file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     if (magic != LevelMagic)
     {
-        // not a valid .level file — bail out
+        Error::NonFatalError("Invalid level file format.");
         return false;
     }
 
@@ -236,7 +290,7 @@ bool LevelManager::LoadLevel(const std::string& path)
     file.read(reinterpret_cast<char*>(&version), sizeof(version));
     if (version != LevelVersion)
     {
-        // unsupported version — migrate or reject, depending on how far this drifts later
+        Error::NonFatalError("Unsupported level file version.");
         return false;
     }
 
@@ -288,6 +342,23 @@ bool LevelManager::LoadLevel(const std::string& path)
             camera.farClip = ReadFloat(file);
             registry.AddComponent<Camera>(e, camera);
         }
+		if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
+		{
+			ColliderBox collider;
+			collider.localPosition = ReadVector3(file);
+			collider.localRotation = ReadVector3(file);
+			collider.localScale = ReadVector3(file);
+			registry.AddComponent<ColliderBox>(e, collider);
+		}
+		if (flags & static_cast<uint8_t>(ComponentFlag::Script))
+		{
+			int scriptCount = ReadInt(file);
+			for (int j = 0; j < scriptCount; j++)
+			{
+                std::string scriptName = ReadString(file);
+                scriptManager.AddScriptToEntity(e, scriptName);
+			}
+		}
     }
 
     return true;
@@ -298,7 +369,7 @@ bool LevelManager::CreateLevel(const std::string& path)
     std::ofstream file(path, std::ios::binary);
     if (!file.is_open())
     {
-        // handle non fatal error
+        Error::NonFatalError("Failed to open level file for writing.");
         return false;
     }
 

@@ -56,7 +56,6 @@
     <ClCompile Include="Core\Model\ModelManager.ixx" />
     <ClCompile Include="Core\Registry\Registry.ixx" />
     <ClCompile Include="Core\Resolution\Resolution.ixx" />
-    <ClCompile Include="Core\Script\BasicScript.ixx" />
     <ClCompile Include="Core\Script\Scripts.ixx" />
     <ClCompile Include="Core\Script\ScriptManager.ixx" />
     <ClCompile Include="Core\Settings\Settings.cpp" />

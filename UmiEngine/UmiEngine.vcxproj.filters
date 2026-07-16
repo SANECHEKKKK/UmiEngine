@@ -123,9 +123,6 @@
     <ClCompile Include="Core\Script\ScriptManager.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core\Script\BasicScript.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Engine\Engine.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>

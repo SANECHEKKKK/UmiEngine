@@ -4,13 +4,15 @@ module;
 export module Scripts.PlayerMove;
 
 import Engine;
+import Script;
+import Scripts.EnemyScript;
 
 export namespace Umi
 {
 	class PlayerMove : public BasicScript
 	{
 	private:
-
+		
 		Vector3 velocity{ 0.0f, 0.0f, 0.0f };
 		const float movementSpeed = 20.0f;
 
@@ -69,33 +71,21 @@ export namespace Umi
 				transform.pos.z += velocity.z * Time::deltaTime;
 			}
 
-			//transform.pos.z += velocity.z * Time::deltaTime;
-			//transform.pos.x += velocity.x * Time::deltaTime;
 
-			// if (Keyboard::IsKeyDown(KK_W))
-			// {
-			//     transform.pos.z += 0.1f;
-			// }
-			// if (Keyboard::IsKeyDown(KK_S))
-			// {
-			//     transform.pos.z -= 0.1f;
-			// }
-			// if (Keyboard::IsKeyDown(KK_A))
-			// {
-			//     transform.pos.x -= 0.1f;
-			// }
-			// if (Keyboard::IsKeyDown(KK_D))
-			// {
-			//     transform.pos.x += 0.1f;
-			// }
-			// if (Keyboard::IsKeyDown(KK_Q))
-			// {
-			//     transform.rot.z -= 0.1f;
-			// }
-			// if (Keyboard::IsKeyDown(KK_E))
-			// {
-			//     transform.rot.z += 0.1f;
-			// }
+			//-------------ATTACK-------------
+			if (Keyboard::IsKeyTrigger(KK_SPACE))
+			{
+				for (const auto e : CheckOverlap(transform.pos + transform.rot * 1.5f, {1.0f, 1.0f, 1.0f}))
+				{
+					if (HasTag(e, "Enemy"))
+					{
+						if (auto script = GetScript<EnemyScript>(e))
+						{
+							script->GiveDamage(1);
+						}
+					}
+				}
+			}
 		}
 	};
 }

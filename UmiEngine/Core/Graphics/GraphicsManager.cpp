@@ -573,15 +573,11 @@ void GraphicsManager::LoadDebugShaders()
 
 void GraphicsManager::CreateDebugBoxBuffers()
 {
-	// Unit cube centered on origin, half-extent 0.5 — so scaling by
-	// collider.size puts corners at exactly +-size*0.5, matching the
-	// `half = size * 0.5f` used in CollisionManager's AABB math.
 	const DebugVertex corners[8] = {
 		{{-0.5f,-0.5f,-0.5f}}, {{ 0.5f,-0.5f,-0.5f}}, {{ 0.5f, 0.5f,-0.5f}}, {{-0.5f, 0.5f,-0.5f}}, // back
 		{{-0.5f,-0.5f, 0.5f}}, {{ 0.5f,-0.5f, 0.5f}}, {{ 0.5f, 0.5f, 0.5f}}, {{-0.5f, 0.5f, 0.5f}}, // front
 	};
 
-	// 12 edges = 24 indices
 	const unsigned short edges[24] = {
 		0,1, 1,2, 2,3, 3,0,   // back face
 		4,5, 5,6, 6,7, 7,4,   // front face
@@ -633,17 +629,15 @@ void GraphicsManager::CreateDebugPipelineState()
 		  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 
-	// SceneMatrix = 3 XMMATRIX = 192 bytes = 48 DWORDs. Root constants avoid
-	// any per-frame CB allocation; 48 + 4 = 52 DWORDs, under the 64 limit.
 	CD3DX12_ROOT_PARAMETER rootparam[2] = {};
-	rootparam[0].InitAsConstants(48, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX); // b0: world/view/proj
-	rootparam[1].InitAsConstants(4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);  // b1: color
+	rootparam[0].InitAsConstants(48, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	rootparam[1].InitAsConstants(4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
 	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
 	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 	rsDesc.pParameters = rootparam;
 	rsDesc.NumParameters = 2;
-	rsDesc.pStaticSamplers = nullptr;   // no textures in the debug pass
+	rsDesc.pStaticSamplers = nullptr;
 	rsDesc.NumStaticSamplers = 0;
 
 	ComPtr<ID3DBlob> rsBlob, errBlob;
@@ -673,10 +667,8 @@ void GraphicsManager::CreateDebugPipelineState()
 	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 	gpipeline.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	gpipeline.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;  // lines have no facing
+	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
-	// Depth-test ON so a box behind a wall is correctly occluded,
-	// depth-write OFF so debug lines never pollute the depth buffer.
 	gpipeline.DepthStencilState.DepthEnable = TRUE;
 	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
@@ -688,8 +680,6 @@ void GraphicsManager::CreateDebugPipelineState()
 
 	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 
-	// THE important line — without LINE here, IASetPrimitiveTopology(LINELIST)
-	// throws a validation error and nothing draws.
 	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
 	gpipeline.NumRenderTargets = 1;
@@ -871,8 +861,6 @@ void GraphicsManager::CreateViewportSRV()
 
 void GraphicsManager::InitViewport()
 {
-	// Reserve a slot from the SAME allocator ImGui uses (the one in initInfo),
-	// so the font and the viewport texture never share a descriptor.
 	initInfo.imguiSrvAllocator.Alloc(&viewportSrvCpu, &viewportSrvGpu);
 	CreateViewportSRV();
 }

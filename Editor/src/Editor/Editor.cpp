@@ -58,6 +58,8 @@ void Editor::Run()
 	MSG msg = {};
 	while (isRunning)
 	{
+		inputManager.keyboard.Update();
+
 		// ── 1. Drain the ENTIRE OS message queue before touching the game ──
 		//    Draining one-per-frame can stall the loop under heavy WM traffic.
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -74,6 +76,7 @@ void Editor::Run()
 		if (!isRunning)
 			break;
 
+
 		// ── 2. Timing ──────────────────────────────────────────────────────
 		QueryPerformanceCounter(&currentTime);
 
@@ -84,7 +87,6 @@ void Editor::Run()
 
 		// Spike guard: clamp runaway deltas (debugger pause, OS preemption).
 		float deltaTime = std::min(rawDelta, kMaxDeltaTime);
-		accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
 		// Prevent spiral of death from accumulating too much time.
 
 		// ── 3. Frame ───────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ void Editor::Run()
 					static_cast<float>(frequency.QuadPart) < targetFrameTime);
 			}
 		}
+
 	}
 }
 
@@ -150,26 +153,22 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 	imGuiManager.ProcessDeferred();
 	ProcessPlayRequests();
 
-	inputSystem.Update();
-
-	//HandleSignal(HandleInput());
 
 	if (editorContext.playState == PlayState::Play)
 	{
-		accumulator += deltaTime;
-		//accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
+		accumulator = std::min(accumulator + deltaTime, kMaxDeltaTime);
 		while (accumulator >= kFixedStep)
 		{
-			//FixedUpdate(kFixedStep);
-			Time::deltaTime = deltaTime;
-			scriptManager.Update();
+			Time::deltaTime = kFixedStep;
 			collisionManager.Update();
+			inputSystem.Update();
 			accumulator -= kFixedStep;
 		}
+
+		Time::deltaTime = deltaTime;
+		scriptManager.Update();
 	}
 	const float alpha = accumulator / kFixedStep;
-
-	//HandleSignal(Update(deltaTime));
 
 	collisionManager.UpdateColliders();
 	window.GetGraphics().SetShowColliders(editorContext.showColliders);
@@ -180,14 +179,6 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 	window.GetGraphics().StartImguiFrame();
 	imGuiManager.Render();
 	window.GetGraphics().FrameEnd();
-	//window.GetGraphics().Clear();
-	//Render(alpha);
-	//imGuiManager.DrawBegin();
-	//RenderImGui();
-	//imGuiManager.DrawEnd();
-	//window.GetGraphics().Present();
-
-	//HandleSignal(HandleEvents());
 }
 
 void Editor::UseEditorCamera(bool set)

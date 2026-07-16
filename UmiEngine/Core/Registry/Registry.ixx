@@ -9,199 +9,201 @@ import Entity;
 
 namespace Umi
 {
-    template <typename... Components>
-    class View;
+	template <typename... Components>
+	class View;
 
-    struct IComponentPool
-    {
-        virtual void Destroy(Entity e) = 0;
-        virtual ~IComponentPool() = default;
-    };
+	struct IComponentPool
+	{
+		virtual void Destroy(Entity e) = 0;
+		virtual ~IComponentPool() = default;
+	};
 
-    template <typename T>
-    class ComponentPool : public IComponentPool
-    {
-    public:
-        std::unordered_map<Entity, T> components;
-        std::vector<Entity> denseEntities;
+	template <typename T>
+	class ComponentPool : public IComponentPool
+	{
+	public:
+		std::unordered_map<Entity, T> components;
+		std::vector<Entity> denseEntities;
 
-        void Add(Entity e, const T& component)
-        {
-            components[e] = component;
-            denseEntities.push_back(e);
-        }
+		void Add(Entity e, const T& component)
+		{
+			components[e] = component;
+			denseEntities.push_back(e);
+		}
 
-        void Add(Entity e, T&& component)
-        {
-            components[e] = std::move(component); // Move instead of copy!
-            denseEntities.push_back(e);
-        }
+		void Add(Entity e, T&& component)
+		{
+			components[e] = std::move(component); // Move instead of copy!
+			denseEntities.push_back(e);
+		}
 
-        T& Get(Entity e)
-        {
-            return components.at(e);
-        }
+		T& Get(Entity e)
+		{
+			return components.at(e);
+		}
 
-        bool Has(Entity e) const
-        {
-            return components.contains(e);
-        }
+		bool Has(Entity e) const
+		{
+			return components.contains(e);
+		}
 
-        void Destroy(Entity e) override
-        {
-            components.erase(e);
+		void Destroy(Entity e) override
+		{
+			components.erase(e);
 
-            auto it = std::find(denseEntities.begin(), denseEntities.end(), e);
-            if (it != denseEntities.end())
-            {
-                denseEntities.erase(it);
-            }
-        }
+			auto it = std::find(denseEntities.begin(), denseEntities.end(), e);
+			if (it != denseEntities.end())
+			{
+				denseEntities.erase(it);
+			}
+		}
 
-        const std::vector<Entity>& GetEntities() const { return denseEntities; }
-    };
+		const std::vector<Entity>& GetEntities() const { return denseEntities; }
+	};
 
-    //-----------EXPORT-----------
-    export class ENGINE_API Registry
-    {
-    private:
-        std::vector<Entity> freeEntities;
+	//-----------EXPORT-----------
+	export class ENGINE_API Registry
+	{
+	private:
+		std::vector<Entity> freeEntities;
 
-        std::vector<std::unique_ptr<IComponentPool>> pools;
-        std::unordered_map<std::type_index, IComponentPool*> poolMap;
+		std::vector<std::unique_ptr<IComponentPool>> pools;
+		std::unordered_map<std::type_index, IComponentPool*> poolMap;
 
-    public:
-        Entity maxEntity{0};
+		std::vector<Entity> entiesToDestroy;
 
-        Entity CreateEntity()
-        {
-            if (!freeEntities.empty())
-            {
-                Entity e = freeEntities.back();
-                freeEntities.pop_back();
-                return e;
-            }
-            return maxEntity++;
-        }
+	public:
+		Entity maxEntity{ 0 };
 
-        void DestroyEntity(Entity e)
-        {
-            for (auto& pool : pools)
-                pool->Destroy(e);
+		Entity CreateEntity()
+		{
+			if (!freeEntities.empty())
+			{
+				Entity e = freeEntities.back();
+				freeEntities.pop_back();
+				return e;
+			}
+			return maxEntity++;
+		}
 
-            freeEntities.push_back(e);
-        }
+		void DestroyEntity(Entity e)
+		{
+			for (auto& pool : pools)
+				pool->Destroy(e);
 
-        void Clear()
-        {
-            pools.clear();
-            poolMap.clear();
-            freeEntities.clear();
-            maxEntity = static_cast<Entity>(0);
-        }
+			freeEntities.push_back(e);
+		}
 
-        template <typename T>
-        ComponentPool<T>& GetPool()
-        {
-            std::type_index type = typeid(T);
+		void Clear()
+		{
+			pools.clear();
+			poolMap.clear();
+			freeEntities.clear();
+			maxEntity = static_cast<Entity>(0);
+		}
 
-            auto it = poolMap.find(type);
-            if (it == poolMap.end())
-            {
-                auto pool = std::make_unique<ComponentPool<T>>();
-                auto* raw = pool.get();
+		template <typename T>
+		ComponentPool<T>& GetPool()
+		{
+			std::type_index type = typeid(T);
 
-                pools.push_back(std::move(pool));
-                poolMap[type] = raw;
+			auto it = poolMap.find(type);
+			if (it == poolMap.end())
+			{
+				auto pool = std::make_unique<ComponentPool<T>>();
+				auto* raw = pool.get();
 
-                return *static_cast<ComponentPool<T>*>(raw);
-            }
+				pools.push_back(std::move(pool));
+				poolMap[type] = raw;
 
-            return *static_cast<ComponentPool<T>*>(it->second);
-        }
+				return *static_cast<ComponentPool<T>*>(raw);
+			}
 
-        template <typename T>
-        void AddComponent(Entity e, const T& component)
-        {
-            GetPool<T>().Add(e, component);
-        }
+			return *static_cast<ComponentPool<T>*>(it->second);
+		}
 
-        template <typename T>
-        void AddComponent(Entity e, T&& component)
-        {
-            GetPool<T>().Add(e, std::move(component));
-        }
+		template <typename T>
+		void AddComponent(Entity e, const T& component)
+		{
+			GetPool<T>().Add(e, component);
+		}
 
-        template <typename T>
-        bool HasComponent(Entity e)
-        {
-            return GetPool<T>().Has(e);
-        }
+		template <typename T>
+		void AddComponent(Entity e, T&& component)
+		{
+			GetPool<T>().Add(e, std::move(component));
+		}
 
-        template <typename T>
-        T& GetComponent(Entity e)
-        {
-            return GetPool<T>().Get(e);
-        }
+		template <typename T>
+		bool HasComponent(Entity e)
+		{
+			return GetPool<T>().Has(e);
+		}
 
-        template <typename T>
-        void RemoveComponent(Entity e)
-        {
-            GetPool<T>().Destroy(e);
-        }
+		template <typename T>
+		T& GetComponent(Entity e)
+		{
+			return GetPool<T>().Get(e);
+		}
 
-        template <typename... Components>
-        View<Components...> View()
-        {
-            return Umi::View<Components...>(*this);
-        }
+		template <typename T>
+		void RemoveComponent(Entity e)
+		{
+			GetPool<T>().Destroy(e);
+		}
 
-        Registry() = default;
+		template <typename... Components>
+		View<Components...> View()
+		{
+			return Umi::View<Components...>(*this);
+		}
 
-        Registry(const Registry&) = delete;
-        Registry& operator=(const Registry&) = delete;
+		Registry() = default;
 
-        Registry(Registry&&) = default;
-        Registry& operator=(Registry&&) = default;
-    };
+		Registry(const Registry&) = delete;
+		Registry& operator=(const Registry&) = delete;
 
-    template <typename... Components>
-    class View
-    {
-    public:
-        Registry& registry;
-        std::vector<Entity> matchingEntities;
+		Registry(Registry&&) = default;
+		Registry& operator=(Registry&&) = default;
+	};
 
-        View(Registry& reg) : registry(reg)
-        {
-            auto& smallestPool = GetSmallestPool<Components...>();
+	template <typename... Components>
+	class View
+	{
+	public:
+		Registry& registry;
+		std::vector<Entity> matchingEntities;
 
-            for (Entity e : smallestPool)
-            {
-                if ((registry.HasComponent<Components>(e) && ...))
-                {
-                    matchingEntities.push_back(e);
-                }
-            }
-        }
+		View(Registry& reg) : registry(reg)
+		{
+			auto& smallestPool = GetSmallestPool<Components...>();
 
-        auto begin() { return matchingEntities.begin(); }
-        auto end() { return matchingEntities.end(); }
+			for (Entity e : smallestPool)
+			{
+				if ((registry.HasComponent<Components>(e) && ...))
+				{
+					matchingEntities.push_back(e);
+				}
+			}
+		}
 
-    private:
-        template <typename First, typename... Rest>
-        const std::vector<Entity>& GetSmallestPool()
-        {
-            if constexpr (sizeof...(Rest) == 0)
-            {
-                return registry.GetPool<First>().GetEntities();
-            }
-            else
-            {
-                auto& firstPool = registry.GetPool<First>().GetEntities();
-                auto& restPool = GetSmallestPool<Rest...>();
-                return (firstPool.size() < restPool.size()) ? firstPool : restPool;
-            }
-        }
-    };
+		auto begin() { return matchingEntities.begin(); }
+		auto end() { return matchingEntities.end(); }
+
+	private:
+		template <typename First, typename... Rest>
+		const std::vector<Entity>& GetSmallestPool()
+		{
+			if constexpr (sizeof...(Rest) == 0)
+			{
+				return registry.GetPool<First>().GetEntities();
+			}
+			else
+			{
+				auto& firstPool = registry.GetPool<First>().GetEntities();
+				auto& restPool = GetSmallestPool<Rest...>();
+				return (firstPool.size() < restPool.size()) ? firstPool : restPool;
+			}
+		}
+	};
 }

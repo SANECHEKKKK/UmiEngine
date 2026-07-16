@@ -11,9 +11,9 @@ export module ScriptManager;
 #include <string>
 
 import Registry;
-import BasicScript;
 import Script;
 import Entity;
+import CollisionManager;
 
 export namespace Umi
 {
@@ -21,6 +21,7 @@ export namespace Umi
     {
     private:
         Registry& registry;
+        CollisionManager& collisionManager;
 
         HMODULE gameModule = nullptr;
 
@@ -97,7 +98,7 @@ export namespace Umi
 			auto script = CreateScript(name);
 			if (!script) return;
 
-			script->Bind(e, &registry);
+			script->Bind(e, &registry, &collisionManager);
 
 			if (!registry.HasComponent<Scripts>(e))
 				registry.AddComponent<Scripts>(e, Scripts{});
@@ -105,6 +106,6 @@ export namespace Umi
 			registry.GetComponent<Scripts>(e).scripts.push_back({ std::string(name), std::move(script) });
 		}
 
-        ScriptManager(Registry& registry) : registry(registry) {}
+        ScriptManager(Registry& registry, CollisionManager& collisionManager) : registry(registry), collisionManager(collisionManager) {}
     };
 }

@@ -129,6 +129,7 @@ bool LevelManager::SaveLevel()
         if (flags & static_cast<uint8_t>(ComponentFlag::ID))
         {
             WriteString(file, registry.GetComponent<ID>(e).name);
+            WriteString(file, registry.GetComponent<ID>(e).tag);
         }
 
         if (flags & static_cast<uint8_t>(ComponentFlag::Transform))
@@ -222,6 +223,7 @@ bool LevelManager::SaveLevel(const std::string& path)
         if (flags & static_cast<uint8_t>(ComponentFlag::ID))
         {
             WriteString(file, registry.GetComponent<ID>(e).name);
+			WriteString(file, registry.GetComponent<ID>(e).tag);
         }
         if (flags & static_cast<uint8_t>(ComponentFlag::Transform))
         {
@@ -311,6 +313,7 @@ bool LevelManager::LoadLevel(const std::string& path)
         {
             ID id;
             id.name = ReadString(file);
+			id.tag = ReadString(file);
             registry.AddComponent<ID>(e, id);
         }
         if (flags & static_cast<uint8_t>(ComponentFlag::Transform))

@@ -33,7 +33,7 @@ export namespace Umi
 
 		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
 		static constexpr float kFixedStep = 1.0f / 120.0f;
-		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager, inputManager };
+		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager, inputManager, collisionManager };
 		Umi::Settings settings;
 
 		Umi::Window window;
@@ -46,7 +46,7 @@ export namespace Umi
 		Umi::ModelManager modelManager;
 		Umi::ImGuiManager imGuiManager;
 		Umi::InputManager inputManager;
-		Umi::ScriptManager scriptManager{ registry };
+		Umi::ScriptManager scriptManager{ registry, collisionManager };
 		Umi::LevelManager levelManager{ registry, textureManager, modelManager, scriptManager };
 
 		Umi::InputSystem inputSystem;

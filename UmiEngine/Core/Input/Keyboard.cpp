@@ -109,7 +109,6 @@ void Keyboard::Reset(void)
 //キーボード制御のためのウィンドウメッセージプロシージャフック関数
 void Keyboard::ProcessMessage(UINT message, WPARAM wParam, LPARAM lParam)
 {
-    Update();
     bool down = false;
 
     switch (message)

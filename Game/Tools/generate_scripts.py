@@ -20,7 +20,7 @@ for dirpath, _, files in os.walk(scripts_dir):
 
 lines = ["// AUTO-GENERATED — do not edit.",
          "import ScriptManager;",
-         "import BasicScript;"]
+         "import Script;"]
 lines += [f"import {mod};" for mod, _ in found]
 lines += ["", "void RegisterAllScripts(Umi::ScriptManager& sm)", "{"]
 for _, classes in found:

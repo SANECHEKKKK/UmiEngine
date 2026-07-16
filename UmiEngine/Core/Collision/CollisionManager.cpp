@@ -162,6 +162,24 @@ void CollisionManager::HandleCollisionPhysics(Transform& transform1, ColliderBox
 	}
 }
 
+std::vector<Entity> CollisionManager::OverlapBox(const Vector3& center, const Vector3& size)
+{
+	std::vector<Entity> hits;
+
+	ColliderBox query;
+	query.worldPosition = center;
+	query.size = size;
+
+	for (Entity e : GetNearbyEntities(GetCellKey(center)))
+	{
+		auto& collider = registry.GetComponent<ColliderBox>(e);
+		if (CheckAABBCollision(query, collider))
+			hits.push_back(e);
+	}
+
+	return hits;
+}
+
 void CollisionManager::UpdateColliders()
 {
 	for (auto e : registry.View<Transform, ColliderBox>())
@@ -170,24 +188,21 @@ void CollisionManager::UpdateColliders()
 		auto& collider = registry.GetComponent<ColliderBox>(e);
 
 		collider.worldPosition = transform.pos + collider.localPosition;
+		collider.worldRotation = transform.rot + collider.localRotation;
 	}
 }
 
 void CollisionManager::Update()
 {
 	UpdateColliders();
+	
+	for (auto& [key, entities] : grid)
+		entities.clear();
 
 	for (auto e : registry.View<Transform, ColliderBox>())
 	{
 		auto& collider = registry.GetComponent<ColliderBox>(e);
-
-		CellKey newKey = GetCellKey(collider.worldPosition);
-		auto it = entityCellMap.find(e);
-
-		if (it != entityCellMap.end())
-			UpdateEntityInGrid(e, it->second, newKey);
-		else
-			AddEntityToGrid(e, newKey);
+		grid[GetCellKey(collider.worldPosition)].push_back(e);
 	}
 
 	for (auto e : registry.View<Transform, ColliderBox>())

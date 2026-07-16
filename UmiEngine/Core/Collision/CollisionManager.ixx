@@ -48,6 +48,8 @@ export namespace Umi
 		void HandleCollisionPhysics(Transform& transform1, ColliderBox& collider1, Transform& transform2, ColliderBox& collider2);
 
 	public:
+		std::vector<Entity> OverlapBox(const Vector3& center, const Vector3& size);
+
 		void UpdateColliders();
 		void Update();
 

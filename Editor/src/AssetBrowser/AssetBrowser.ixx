@@ -12,7 +12,7 @@ export namespace Umi
 	class AssetBrowser
 	{
 	private:
-		enum class AssetType { Folder, Texture, Model, Other };
+		enum class AssetType { Folder, Texture, Model, Level, Script, Other };
 
 		EngineContext& engineContext;
 		EditorContext& editorContext;
@@ -28,6 +28,15 @@ export namespace Umi
 		void Activate(const std::filesystem::path& fsPath, const std::string& path,
 			const std::string& name, AssetType type);
 
+		std::string scriptsDir = "../Game/Scripts";
+
+		char scriptNameBuf[64] = "";
+		std::string createScriptStatus;
+
+		bool openCreateScript = false;
+
+		bool CreateScriptFile(const std::string& name);
+		
 	public:
 		void Draw();
 		void ProcessPending();   // call only when the command list is NOT mid-frame

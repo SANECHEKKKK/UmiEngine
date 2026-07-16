@@ -143,16 +143,16 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Assets\Scripts\CameraMove.ixx" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="src\AssetBrowser\AssetBrowser.cpp" />
     <ClCompile Include="src\AssetBrowser\AssetBrowser.ixx" />
     <ClCompile Include="src\EditorContext\EditorContext.ixx" />
     <ClCompile Include="src\Editor\Editor.cpp" />
     <ClCompile Include="src\Editor\Editor.ixx" />
+    <ClCompile Include="src\ErrorWindow\ErrorWindow.cpp" />
+    <ClCompile Include="src\ErrorWindow\ErrorWindow.ixx" />
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.cpp" />
     <ClCompile Include="src\HierarchyWindow\HierarchyWindow.ixx" />
-    <ClCompile Include="src\ID\ID.ixx" />
     <ClCompile Include="src\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="src\ImGui\ImGuiManager.ixx" />
     <ClCompile Include="src\ImGui\imgui_impl_dx12.cpp" />
@@ -164,6 +164,10 @@
     <ClCompile Include="src\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\InspectorWindow\InspectorWindow.cpp" />
     <ClCompile Include="src\InspectorWindow\InspectorWindow.ixx" />
+    <ClCompile Include="src\ToolBar\ToolBar.cpp" />
+    <ClCompile Include="src\ToolBar\ToolBar.ixx" />
+    <ClCompile Include="src\TopBar\TopBar.cpp" />
+    <ClCompile Include="src\TopBar\TopBar.ixx" />
     <ClCompile Include="src\ViewPortWindow\ViewPort.cpp" />
     <ClCompile Include="src\ViewPortWindow\ViewPort.ixx" />
   </ItemGroup>
@@ -178,6 +182,9 @@
     <ClInclude Include="src\ImGui\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Game\Game.vcxproj">
+      <Project>{8aef2a9f-1117-49e4-a4ad-58862ed29480}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\UmiEngine\UmiEngine.vcxproj">
       <Project>{c4723276-ea9d-445a-b529-d23a26a7e61d}</Project>
     </ProjectReference>

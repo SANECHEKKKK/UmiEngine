@@ -22,6 +22,9 @@
     <ClCompile Include="Core\Camera\CameraManager.cpp" />
     <ClCompile Include="Core\Camera\Camera.ixx" />
     <ClCompile Include="Core\Camera\CameraManager.ixx" />
+    <ClCompile Include="Core\Collision\ColliderBox.ixx" />
+    <ClCompile Include="Core\Collision\CollisionManager.cpp" />
+    <ClCompile Include="Core\Collision\CollisionManager.ixx" />
     <ClCompile Include="Core\EngineContext\EngineContext.ixx" />
     <ClCompile Include="Core\Engine\Engine.ixx" />
     <ClCompile Include="Core\Entity\Entity.ixx" />
@@ -29,6 +32,7 @@
     <ClCompile Include="Core\Graphics\DescriptorHeap.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsContext.ixx" />
     <ClCompile Include="Core\Graphics\GraphicsManager.cpp" />
+    <ClCompile Include="Core\ID\ID.ixx" />
     <ClCompile Include="Core\Input\InputComponent.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -36,12 +40,15 @@
     <ClCompile Include="Core\Input\InputManager.cpp" />
     <ClCompile Include="Core\Input\InputManager.ixx" />
     <ClCompile Include="Core\Input\InputSystem.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Core\Input\InputSystem.ixx" />
     <ClCompile Include="Core\Input\Keyboard.cpp" />
     <ClCompile Include="Core\Input\Keyboard.ixx" />
     <ClCompile Include="Core\Input\Mouse.cpp" />
     <ClCompile Include="Core\Input\Mouse.ixx" />
+    <ClCompile Include="Core\Level\LevelManager.cpp" />
+    <ClCompile Include="Core\Level\LevelManager.ixx" />
     <ClCompile Include="Core\Material\Material.ixx" />
     <ClCompile Include="Core\Math\Math.ixx" />
     <ClCompile Include="Core\Model\Model.ixx" />
@@ -49,8 +56,7 @@
     <ClCompile Include="Core\Model\ModelManager.ixx" />
     <ClCompile Include="Core\Registry\Registry.ixx" />
     <ClCompile Include="Core\Resolution\Resolution.ixx" />
-    <ClCompile Include="Core\Script\BasicScript.ixx" />
-    <ClCompile Include="Core\Script\Script.ixx" />
+    <ClCompile Include="Core\Script\Scripts.ixx" />
     <ClCompile Include="Core\Script\ScriptManager.ixx" />
     <ClCompile Include="Core\Settings\Settings.cpp" />
     <ClCompile Include="Core\Settings\Settings.ixx" />
@@ -67,13 +73,6 @@
   <ItemGroup>
     <ClInclude Include="Core\EngineApi\EngineApi.h" />
     <ClInclude Include="Core\Graphics\d3dx12.h" />
-    <ClInclude Include="Core\Input\InputComponent.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Core\Input\InputSystem.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="Core\Json\json.hpp" />
     <ClInclude Include="Core\Texture\stb_image.h" />
   </ItemGroup>
@@ -117,6 +116,22 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="Core\Shaders\DebugPixelShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="Core\Shaders\DebugVertexShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="Core\Shaders\peraPixel.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
@@ -270,7 +285,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(DXTEX_DER);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(DXTEX_DER)\Bin\Desktop_2022_Win10\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Lib>
       <AdditionalLibraryDirectories>$(DXTEX_DER)\Bin\Desktop_2022_Win10\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

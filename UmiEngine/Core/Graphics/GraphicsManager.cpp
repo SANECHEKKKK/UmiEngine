@@ -31,6 +31,7 @@ import Texture;
 import Model;
 import Transform;
 import Camera;
+import ColliderBox;
 
 std::filesystem::path GetExecutableDir() {
 	wchar_t path[MAX_PATH];
@@ -385,28 +386,8 @@ void GraphicsManager::Create3DDescriptorHeap()
 
 void GraphicsManager::Create3DMatrixContantBuffer()
 {
-	auto constBuffHeapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-	auto constBuffresDesc = CD3DX12_RESOURCE_DESC::Buffer((sizeof(SceneMatrix) + 0xff) & ~0xff);
-
-	auto result = device->CreateCommittedResource(
-		&constBuffHeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&constBuffresDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&matrixConstantBuffer3D)
-	);
-
-
-	result = matrixConstantBuffer3D->Map(0, nullptr, (void**)&mapMatrix3D);
-
-	descriptorHeap3D.Add();
-	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-	cbvDesc.BufferLocation = matrixConstantBuffer3D->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = matrixConstantBuffer3D->GetDesc().Width;
-	device->CreateConstantBufferView(&cbvDesc, descriptorHeap3D[0]);
-
+	descriptorHeap3D.Add();      // reserve slot 0 so texture SRVs stay at slot 1+
+	AllocateMatrixBuffer3D(1024);
 }
 
 void GraphicsManager::Create3DPipelineState()
@@ -574,6 +555,180 @@ void GraphicsManager::Create3DPipelineState()
 }
 //------------------------------------------
 
+//--------------------DEBUG--------------------
+void GraphicsManager::LoadDebugShaders()
+{
+	auto result = D3DReadFileToBlob(
+		(GetExecutableDir() / "DebugVertexShader.cso").wstring().c_str(),
+		&vertexShaderBlobDebug);
+	if (FAILED(result))
+		Error::FatalError("Failed to load debug vertex shader .cso.");
+
+	result = D3DReadFileToBlob(
+		(GetExecutableDir() / "DebugPixelShader.cso").wstring().c_str(),
+		&pixelShaderBlobDebug);
+	if (FAILED(result))
+		Error::FatalError("Failed to load debug pixel shader .cso.");
+}
+
+void GraphicsManager::CreateDebugBoxBuffers()
+{
+	const DebugVertex corners[8] = {
+		{{-0.5f,-0.5f,-0.5f}}, {{ 0.5f,-0.5f,-0.5f}}, {{ 0.5f, 0.5f,-0.5f}}, {{-0.5f, 0.5f,-0.5f}}, // back
+		{{-0.5f,-0.5f, 0.5f}}, {{ 0.5f,-0.5f, 0.5f}}, {{ 0.5f, 0.5f, 0.5f}}, {{-0.5f, 0.5f, 0.5f}}, // front
+	};
+
+	const unsigned short edges[24] = {
+		0,1, 1,2, 2,3, 3,0,   // back face
+		4,5, 5,6, 6,7, 7,4,   // front face
+		0,4, 1,5, 2,6, 3,7,   // verticals
+	};
+
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+	auto vbDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(corners));
+	if (device->CreateCommittedResource(
+		&heapProps, D3D12_HEAP_FLAG_NONE, &vbDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(&vertexBufferDebug)) != S_OK)
+		Error::FatalError("Failed to create debug vertex buffer.");
+
+	DebugVertex* vertMap = nullptr;
+	vertexBufferDebug->Map(0, nullptr, (void**)&vertMap);
+	std::copy(std::begin(corners), std::end(corners), vertMap);
+	vertexBufferDebug->Unmap(0, nullptr);
+
+	vertexBufferViewDebug.BufferLocation = vertexBufferDebug->GetGPUVirtualAddress();
+	vertexBufferViewDebug.SizeInBytes = sizeof(corners);
+	vertexBufferViewDebug.StrideInBytes = sizeof(DebugVertex);
+
+	auto ibDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(edges));
+	if (device->CreateCommittedResource(
+		&heapProps, D3D12_HEAP_FLAG_NONE, &ibDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(&indexBufferDebug)) != S_OK)
+		Error::FatalError("Failed to create debug index buffer.");
+
+	unsigned short* idxMap = nullptr;
+	indexBufferDebug->Map(0, nullptr, (void**)&idxMap);
+	std::copy(std::begin(edges), std::end(edges), idxMap);
+	indexBufferDebug->Unmap(0, nullptr);
+
+	indexBufferViewDebug.BufferLocation = indexBufferDebug->GetGPUVirtualAddress();
+	indexBufferViewDebug.Format = DXGI_FORMAT_R16_UINT;
+	indexBufferViewDebug.SizeInBytes = sizeof(edges);
+}
+
+void GraphicsManager::CreateDebugPipelineState()
+{
+	LoadDebugShaders();
+	CreateDebugBoxBuffers();
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+		  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	};
+
+	CD3DX12_ROOT_PARAMETER rootparam[2] = {};
+	rootparam[0].InitAsConstants(48, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	rootparam[1].InitAsConstants(4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rsDesc.pParameters = rootparam;
+	rsDesc.NumParameters = 2;
+	rsDesc.pStaticSamplers = nullptr;
+	rsDesc.NumStaticSamplers = 0;
+
+	ComPtr<ID3DBlob> rsBlob, errBlob;
+	auto result = D3D12SerializeRootSignature(
+		&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rsBlob, &errBlob);
+	if (FAILED(result))
+	{
+		std::string errorMessage;
+		if (errBlob)
+		{
+			errorMessage.resize(errBlob->GetBufferSize());
+			std::copy_n(static_cast<char*>(errBlob->GetBufferPointer()),
+				errBlob->GetBufferSize(), errorMessage.begin());
+		}
+		Error::FatalError("Failed to serialize debug root signature. " + errorMessage);
+	}
+
+	if (device->CreateRootSignature(0, rsBlob->GetBufferPointer(),
+		rsBlob->GetBufferSize(), IID_PPV_ARGS(&rootsignatureDebug)) != S_OK)
+		Error::FatalError("Failed to create debug root signature.");
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeline = {};
+	gpipeline.pRootSignature = rootsignatureDebug.Get();
+	gpipeline.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlobDebug.Get());
+	gpipeline.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlobDebug.Get());
+
+	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+	gpipeline.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	gpipeline.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+	gpipeline.DepthStencilState.DepthEnable = TRUE;
+	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	gpipeline.DepthStencilState.StencilEnable = FALSE;
+	gpipeline.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
+	gpipeline.InputLayout.pInputElementDescs = inputLayout;
+	gpipeline.InputLayout.NumElements = _countof(inputLayout);
+
+	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+
+	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+
+	gpipeline.NumRenderTargets = 1;
+	gpipeline.RTVFormats[0] = viewportColorFormat;
+	gpipeline.SampleDesc.Count = 1;
+	gpipeline.SampleDesc.Quality = 0;
+
+	if (device->CreateGraphicsPipelineState(
+		&gpipeline, IID_PPV_ARGS(&pipelinestateDebug)) != S_OK)
+		Error::FatalError("Failed to create debug pipeline state.");
+}
+
+void GraphicsManager::RenderDebugColliders()
+{
+	Camera* camera = cameraManager.GetMainCamera();
+	if (!camera) return;
+
+	commandList->SetPipelineState(pipelinestateDebug.Get());
+	commandList->SetGraphicsRootSignature(rootsignatureDebug.Get());
+
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	commandList->IASetVertexBuffers(0, 1, &vertexBufferViewDebug);
+	commandList->IASetIndexBuffer(&indexBufferViewDebug);
+
+	const float green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+	commandList->SetGraphicsRoot32BitConstants(1, 4, green, 0);
+
+	for (auto e : engineContext.registry.View<Transform, ColliderBox>())
+	{
+		auto& collider = engineContext.registry.GetComponent<ColliderBox>(e);
+
+		// AABB: no rotation, by definition. Scale then translate.
+		DirectX::XMMATRIX world =
+			DirectX::XMMatrixScaling(collider.size.x, collider.size.y, collider.size.z) *
+			DirectX::XMMatrixTranslation(collider.worldPosition.x,
+				collider.worldPosition.y,
+				collider.worldPosition.z);
+
+		SceneMatrix matrices{ world, camera->viewMatrix3D, camera->projectionMatrix3D };
+		commandList->SetGraphicsRoot32BitConstants(0, 48, &matrices, 0);
+
+		commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
+	}
+}
+//---------------------------------------------
+
 void GraphicsManager::CreateViewportTargets(uint32_t width, uint32_t height)
 {
 	viewportWidth = width;
@@ -706,8 +861,6 @@ void GraphicsManager::CreateViewportSRV()
 
 void GraphicsManager::InitViewport()
 {
-	// Reserve a slot from the SAME allocator ImGui uses (the one in initInfo),
-	// so the font and the viewport texture never share a descriptor.
 	initInfo.imguiSrvAllocator.Alloc(&viewportSrvCpu, &viewportSrvGpu);
 	CreateViewportSRV();
 }
@@ -1051,7 +1204,7 @@ void GraphicsManager::Render2D()
 
 		DirectX::XMMATRIX world =
 			DirectX::XMMatrixScaling(texData.width * transform.scale.x, texData.height * transform.scale.y, 1.0f) *
-			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
+			DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(transform.rot.x)) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(transform.rot.y)) * DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(transform.rot.z)) *
 			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
 
 		SceneMatrix matrices{ world, camera->viewMatrix2D, camera->projectionMatrix2D };
@@ -1065,6 +1218,7 @@ void GraphicsManager::Render2D()
 void GraphicsManager::Render3D()
 {
 	Camera* camera = cameraManager.GetMainCamera();
+	if (!camera) return;
 
 	commandList->SetPipelineState(pipelinestate3D.Get());
 
@@ -1082,6 +1236,13 @@ void GraphicsManager::Render3D()
 	commandList->SetDescriptorHeaps(1, &heap);
 	commandList->SetGraphicsRootDescriptorTable(2, cbvHandle);
 
+	UINT needed = 0;
+	for (auto e : engineContext.registry.View<Model, Transform>()) ++needed;
+	EnsureMatrixCapacity3D(needed);
+
+	const UINT alignedSize = (sizeof(SceneMatrix) + 0xff) & ~0xff;
+	UINT instance = 0;
+	
 	for (auto e : engineContext.registry.View<Model, Transform>())
 	{
 		auto& model = engineContext.registry.GetComponent<Model>(e);
@@ -1096,12 +1257,13 @@ void GraphicsManager::Render3D()
 
 		DirectX::XMMATRIX world =
 			DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z) *
-			DirectX::XMMatrixRotationX(transform.rot.x) * DirectX::XMMatrixRotationY(transform.rot.y) * DirectX::XMMatrixRotationZ(transform.rot.z) *
+			DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(transform.rot.x)) * DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(transform.rot.y)) * DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(transform.rot.z)) *
 			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
 
 		SceneMatrix matrices{ world, camera->viewMatrix3D, camera->projectionMatrix3D };
-		memcpy(mapMatrix3D, &matrices, sizeof(SceneMatrix));
-		commandList->SetGraphicsRootConstantBufferView(0, matrixConstantBuffer3D.Get()->GetGPUVirtualAddress());
+		const UINT offset = instance * alignedSize;
+		memcpy(mapMatrix3D + offset, &matrices, sizeof(SceneMatrix));
+		commandList->SetGraphicsRootConstantBufferView(0, matrixConstantBuffer3D->GetGPUVirtualAddress() + offset);
 
 		for (auto& mesh : modelData.meshes)
 		{
@@ -1112,6 +1274,8 @@ void GraphicsManager::Render3D()
 
 			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
 		}
+		
+		++instance;
 	}
 }
 
@@ -1121,6 +1285,9 @@ void GraphicsManager::Render()
 
 	Render2D();
 	Render3D();
+
+	if (showColliders)
+		RenderDebugColliders();
 
 	auto toSRV = CD3DX12_RESOURCE_BARRIER::Transition(
 		peraResource.Get(),
@@ -1314,6 +1481,10 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	Create3DPipelineState();
 	//--------------------------------------
 
+	//----------------DEBUG-----------------
+	CreateDebugPipelineState();
+	//--------------------------------------
+
 	//-----------------PERA-----------------
 	//CreatePeraResource();
 	//CreatePeraPipelineState();
@@ -1344,6 +1515,30 @@ void GraphicsManager::FlushGPU()
 			CloseHandle(event);
 		}
 	}
+}
+
+void GraphicsManager::AllocateMatrixBuffer3D(UINT capacity)
+{
+	const UINT alignedSize = (sizeof(SceneMatrix) + 0xff) & ~0xff;
+
+	if (mapMatrix3D) { matrixConstantBuffer3D->Unmap(0, nullptr); mapMatrix3D = nullptr; }
+
+	auto props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto desc  = CD3DX12_RESOURCE_DESC::Buffer(alignedSize * capacity);
+	device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(matrixConstantBuffer3D.ReleaseAndGetAddressOf()));
+	matrixConstantBuffer3D->Map(0, nullptr, (void**)&mapMatrix3D);
+	cb3DCapacity = capacity;
+}
+
+void GraphicsManager::EnsureMatrixCapacity3D(UINT needed)
+{
+	if (needed <= cb3DCapacity) return;
+	UINT cap = cb3DCapacity ? cb3DCapacity : 1;
+	while (cap < needed) cap *= 2;
+	FlushGPU();                  // old buffer is only referenced by already-finished frames
+	AllocateMatrixBuffer3D(cap);
 }
 
 GraphicsManager::~GraphicsManager()

@@ -1,6 +1,7 @@
 module;
 #include <DirectXMath.h>
 #include <numbers>
+#include <cmath>
 
 #include <EngineApi/EngineApi.h>
 export module Math;
@@ -153,11 +154,28 @@ export namespace Umi
 
 
 		//------------------FUNCTIONS------------------//
-		void normalize() noexcept;
+		void normalize() noexcept
+		{
+			float length = std::sqrt(x * x + y * y);
+			if (length > 0.0f) {
+				x /= length;
+				y /= length;
+			}
+		}
 
-		Vector2 normalized() const noexcept;
+		Vector2 normalized() const noexcept
+		{
+			float length = std::sqrt(x * x + y * y);
+			if (length > 0.0f) {
+				return Vector2(x / length, y / length);
+			}
+			return Vector2(0.0f, 0.0f);
+		}
 
-		float length() const noexcept;
+		float length() const noexcept
+		{
+			return std::sqrt(x * x + y * y);
+		}
 		//------------------FUNCTIONS---------------------------//
 	};
 
@@ -291,11 +309,29 @@ export namespace Umi
 
 
 		//------------------FUNCTIONS------------------//
-		void normalize() noexcept;
-
-		Vector3 normalized() const noexcept;
-
-		float length() const noexcept;
+		void normalize() noexcept
+		{
+			float length = std::sqrt(x * x + y * y + z * z);
+			if (length > 0.0f) {
+				x /= length;
+				y /= length;
+				z /= length;
+			}
+		}
+		
+		Vector3 normalized() const noexcept
+		{
+			float length = std::sqrt(x * x + y * y + z * z);
+			if (length > 0.0f) {
+				return Vector3(x / length, y / length, z / length);
+			}
+			return Vector3(0.0f, 0.0f, 0.0f);
+		}
+		
+		float length() const noexcept
+		{
+			return std::sqrt(x * x + y * y + z * z);
+		}
 		//---------------------------------------------//
 	};
 }

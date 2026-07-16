@@ -9,8 +9,7 @@ import Entity;
 
 namespace Umi
 {
-
-	template<typename... Components>
+	template <typename... Components>
 	class View;
 
 	struct IComponentPool
@@ -19,7 +18,7 @@ namespace Umi
 		virtual ~IComponentPool() = default;
 	};
 
-	template<typename T>
+	template <typename T>
 	class ComponentPool : public IComponentPool
 	{
 	public:
@@ -71,6 +70,8 @@ namespace Umi
 		std::vector<std::unique_ptr<IComponentPool>> pools;
 		std::unordered_map<std::type_index, IComponentPool*> poolMap;
 
+		std::vector<Entity> entiesToDestroy;
+
 	public:
 		Entity maxEntity{ 0 };
 
@@ -93,7 +94,15 @@ namespace Umi
 			freeEntities.push_back(e);
 		}
 
-		template<typename T>
+		void Clear()
+		{
+			pools.clear();
+			poolMap.clear();
+			freeEntities.clear();
+			maxEntity = static_cast<Entity>(0);
+		}
+
+		template <typename T>
 		ComponentPool<T>& GetPool()
 		{
 			std::type_index type = typeid(T);
@@ -113,31 +122,37 @@ namespace Umi
 			return *static_cast<ComponentPool<T>*>(it->second);
 		}
 
-		template<typename T>
+		template <typename T>
 		void AddComponent(Entity e, const T& component)
 		{
 			GetPool<T>().Add(e, component);
 		}
 
-		template<typename T>
+		template <typename T>
 		void AddComponent(Entity e, T&& component)
 		{
 			GetPool<T>().Add(e, std::move(component));
 		}
 
-		template<typename T>
+		template <typename T>
 		bool HasComponent(Entity e)
 		{
 			return GetPool<T>().Has(e);
 		}
 
-		template<typename T>
+		template <typename T>
 		T& GetComponent(Entity e)
 		{
 			return GetPool<T>().Get(e);
 		}
 
-		template<typename... Components>
+		template <typename T>
+		void RemoveComponent(Entity e)
+		{
+			GetPool<T>().Destroy(e);
+		}
+
+		template <typename... Components>
 		View<Components...> View()
 		{
 			return Umi::View<Components...>(*this);
@@ -152,7 +167,7 @@ namespace Umi
 		Registry& operator=(Registry&&) = default;
 	};
 
-	template<typename... Components>
+	template <typename... Components>
 	class View
 	{
 	public:
@@ -176,7 +191,7 @@ namespace Umi
 		auto end() { return matchingEntities.end(); }
 
 	private:
-		template<typename First, typename... Rest>
+		template <typename First, typename... Rest>
 		const std::vector<Entity>& GetSmallestPool()
 		{
 			if constexpr (sizeof...(Rest) == 0)
@@ -191,5 +206,4 @@ namespace Umi
 			}
 		}
 	};
-
 }

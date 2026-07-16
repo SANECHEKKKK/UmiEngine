@@ -19,6 +19,7 @@ import Model;
 import Vertex;
 import GraphicsContext;
 import EngineContext;
+import Error;
 
 using namespace Umi;
 using Microsoft::WRL::ComPtr;
@@ -252,7 +253,7 @@ bool ModelManager::CreateVertexBuffer(Mesh& mesh)
 	);
 	if (result != S_OK)
 	{
-		// Handle non-fatal error
+		Error::NonFatalError("Failed to create vertex buffer for mesh.");
 		return false;
 	}
 
@@ -261,7 +262,7 @@ bool ModelManager::CreateVertexBuffer(Mesh& mesh)
 	result = mesh.vertexBuffer->Map(0, nullptr, (void**)&vertMapped);
 	if (result != S_OK)
 	{
-		// Handle non-fatal error
+		Error::NonFatalError("Failed to map vertex buffer for mesh.");
 		return false;
 	}
 
@@ -292,7 +293,7 @@ bool ModelManager::CreateIndexBuffer(Mesh& mesh)
 	);
 	if (result != S_OK)
 	{
-		// Handle non-fatal error
+		Error::NonFatalError("Failed to create index buffer for mesh.");
 		return false;
 	}
 
@@ -345,7 +346,7 @@ ModelID ModelManager::LoadModel(std::string_view filePath)
 
 	if (!scene || !scene->HasMeshes() || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{
-		// Handle non fatal error
+		Error::NonFatalError("Assimp failed to load model: " + std::string(importer.GetErrorString()));
 		return INVALID_MODELID;
 	}
 	//----------------------------------------------------
@@ -360,7 +361,7 @@ ModelID ModelManager::LoadModel(std::string_view filePath)
 	{
 		if (!CreateVertexBuffer(mesh) || !CreateIndexBuffer(mesh))
 		{
-			// Handle non fatal error
+			Error::NonFatalError("Failed to create buffers for mesh.");
 			return INVALID_MODELID;
 		}
 	}
@@ -374,8 +375,8 @@ ModelData& ModelManager::GetModelData(ModelID id)
 {
 	if (static_cast<size_t>(id) >= modelList.size())
 	{
-		// Handle non fatal error
-		return modelList[0]; // Return a default model data or handle it as needed
+		Error::NonFatalError("Invalid model ID.");
+		return modelList[0];
 	}
 	return modelList[static_cast<size_t>(id)];
 }

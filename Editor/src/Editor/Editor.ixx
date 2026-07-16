@@ -19,6 +19,10 @@ import ModelManager;
 import ImGuiManager;
 import InputManager;
 import ScriptManager;
+import LevelManager;
+import CollisionManager;
+
+import InputSystem;
 
 export namespace Umi
 {
@@ -29,7 +33,7 @@ export namespace Umi
 
 		static constexpr float kMaxDeltaTime = 0.25f; // 250 ms
 		static constexpr float kFixedStep = 1.0f / 120.0f;
-		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager, inputManager };
+		Umi::EngineContext engineContext{ registry, settings, textureManager, modelManager, inputManager, collisionManager };
 		Umi::Settings settings;
 
 		Umi::Window window;
@@ -42,7 +46,12 @@ export namespace Umi
 		Umi::ModelManager modelManager;
 		Umi::ImGuiManager imGuiManager;
 		Umi::InputManager inputManager;
-		Umi::ScriptManager scriptManager { engineContext };
+		Umi::ScriptManager scriptManager{ registry, collisionManager };
+		Umi::LevelManager levelManager{ registry, textureManager, modelManager, scriptManager };
+
+		Umi::InputSystem inputSystem;
+
+		Umi::CollisionManager collisionManager{ registry };
 
 		bool bootPrefabsLoaded = false;
 
@@ -54,10 +63,15 @@ export namespace Umi
 
 		void RequestExit() { isRunning = false; }
 
-		void FrameTick(float deltaTime, float& accumulator);
-		
-	public:
+		void EnterPlay();
+		void ExitPlay();
+		void ProcessPlayRequests();
 
+		void FrameTick(float deltaTime, float& accumulator);
+
+		void UseEditorCamera(bool set);
+
+	public:
 		void Run();
 
 		Editor(HINSTANCE hInstance, const char* title);

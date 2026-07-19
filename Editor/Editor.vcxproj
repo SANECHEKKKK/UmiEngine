@@ -108,12 +108,12 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\GameStates;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\src;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\spekt\Downloads\DirectXTK12-main\DirectXTK12-main\Bin\Desktop_2026\x64\Debug;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\GameStates;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\src;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\x64\Debug;C:\Users\spekt\Downloads\DirectXTex-main\DirectXTex-main\DirectXTex\Bin\Desktop_2022_Win10\x64\Debug;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\spekt\Downloads\DirectXTK12-main\DirectXTK12-main\Bin\Desktop_2026\x64\Debug;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\x64\Debug;C:\Users\spekt\Downloads\DirectXTex-main\DirectXTex-main\DirectXTex\Bin\Desktop_2022_Win10\x64\Debug;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>DirectXTex_Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
@@ -130,12 +130,12 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>C:\Users\spekt\source\repos\UmiEngineEditor\Editor\GameStates;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\src;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\spekt\Downloads\DirectXTK12-main\DirectXTK12-main\Bin\Desktop_2026\x64\Release;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\GameStates;C:\Users\spekt\source\repos\UmiEngineEditor\Editor\src;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\spekt\Downloads\DirectXTex-main\DirectXTex-main\DirectXTex\Bin\Desktop_2022_Win10\x64\Release;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\spekt\Downloads\DirectXTK12-main\DirectXTK12-main\Bin\Desktop_2026\x64\Release;C:\Users\spekt\Downloads\DirectXTex-main\DirectXTex-main\DirectXTex\Bin\Desktop_2022_Win10\x64\Release;C:\Users\spekt\source\repos\UmiEngineEditor\UmiEngine\Core\DirectXTex;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>

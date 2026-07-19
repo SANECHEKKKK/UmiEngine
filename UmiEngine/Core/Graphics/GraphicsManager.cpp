@@ -14,9 +14,15 @@
 
 #include <wrl/client.h>
 
+//---------TEXT---------
+#include <SpriteFont.h>
+#include <ResourceUploadBatch.h>
+//----------------------
+
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "DirectXTK12.lib")
 
 module GraphicsManager;
 
@@ -32,6 +38,7 @@ import Model;
 import Transform;
 import Camera;
 import ColliderBox;
+import Text;
 
 std::filesystem::path GetExecutableDir() {
 	wchar_t path[MAX_PATH];
@@ -1242,7 +1249,7 @@ void GraphicsManager::Render3D()
 
 	const UINT alignedSize = (sizeof(SceneMatrix) + 0xff) & ~0xff;
 	UINT instance = 0;
-	
+
 	for (auto e : engineContext.registry.View<Model, Transform>())
 	{
 		auto& model = engineContext.registry.GetComponent<Model>(e);
@@ -1274,9 +1281,30 @@ void GraphicsManager::Render3D()
 
 			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
 		}
-		
+
 		++instance;
 	}
+}
+
+void GraphicsManager::RenderText()
+{
+	auto& registry = engineContext.registry;
+
+	commandList->SetDescriptorHeaps(1, heapForSpriteFont.GetAddressOf());
+
+	spriteBatch->SetViewport(viewport);
+	spriteBatch->Begin(commandList.Get());
+
+	for (auto e : registry.View<Transform, Text>())
+	{
+		auto transform = registry.GetComponent<Transform>(e);
+		auto text = registry.GetComponent<Text>(e);
+
+		spriteFont->DrawString(
+			spriteBatch, text.text.c_str(),
+			DirectX::XMFLOAT2(transform.pos.x, transform.pos.y), text.color);
+	}
+	spriteBatch->End();
 }
 
 void GraphicsManager::Render()
@@ -1288,6 +1316,8 @@ void GraphicsManager::Render()
 
 	if (showColliders)
 		RenderDebugColliders();
+
+	RenderText();
 
 	auto toSRV = CD3DX12_RESOURCE_BARRIER::Transition(
 		peraResource.Get(),
@@ -1328,6 +1358,8 @@ void GraphicsManager::FrameEnd()
 
 	//フリップ
 	swapChain->Present(1, 0);
+
+	gMemory->Commit(commandQueue.Get());
 }
 
 GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
@@ -1496,6 +1528,49 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 	graphicsContext.commandQueue = commandQueue.Get();
 	graphicsContext.descriptorHeap2D = descriptorHeap2D;
 
+
+	//-----------------TEXT-----------------
+	gMemory = new DirectX::GraphicsMemory(device.Get());
+
+	DirectX::ResourceUploadBatch resUploadBatch(device.Get());
+	resUploadBatch.Begin();
+	DirectX::RenderTargetState rtState(
+		DXGI_FORMAT_R8G8B8A8_UNORM,
+		DXGI_FORMAT_D32_FLOAT);
+	DirectX::SpriteBatchPipelineStateDescription pd(rtState);
+	spriteBatch = new DirectX::SpriteBatch(device.Get(), resUploadBatch, pd);
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	desc.NodeMask = 0;
+	desc.NumDescriptors = 1;
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heapForSpriteFont));
+
+	spriteFont = new DirectX::SpriteFont(device.Get(),
+		resUploadBatch,
+		L"font/fonttest.spritefont",
+		heapForSpriteFont->GetCPUDescriptorHandleForHeapStart(),
+		heapForSpriteFont->GetGPUDescriptorHandleForHeapStart());
+	auto future = resUploadBatch.End(commandQueue.Get());
+
+	commandQueue->Signal(fence, ++_fenceVal);
+	//↑の命令直後では_fenceValueは1で、
+	//GetCompletedValueはまだ0です。
+	if (fence->GetCompletedValue() < _fenceVal) {
+		//もしまだ終わってないなら、イベント待ちを行う
+		//↓そのためのイベント？あとそのための_fenceValue
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		//フェンスに対して、CompletedValueが_fenceValueに
+		//なったら指定のイベントを発生させるという命令↓
+		fence->SetEventOnCompletion(_fenceVal, event);
+		//↑まだイベント発生しない
+		//↓イベントが発生するまで待つ
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	future.wait();
+	//--------------------------------------
 }
 
 void GraphicsManager::FlushGPU()
@@ -1524,7 +1599,7 @@ void GraphicsManager::AllocateMatrixBuffer3D(UINT capacity)
 	if (mapMatrix3D) { matrixConstantBuffer3D->Unmap(0, nullptr); mapMatrix3D = nullptr; }
 
 	auto props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	auto desc  = CD3DX12_RESOURCE_DESC::Buffer(alignedSize * capacity);
+	auto desc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize * capacity);
 	device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
 		IID_PPV_ARGS(matrixConstantBuffer3D.ReleaseAndGetAddressOf()));

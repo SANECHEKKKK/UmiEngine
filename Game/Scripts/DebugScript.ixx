@@ -12,7 +12,7 @@ export namespace Umi
 
         void Start() override
         {
-            player = FindEntitiesWithTag("Player");
+            player = FindEntityWithTag("Player");
         }
 
         void Update() override

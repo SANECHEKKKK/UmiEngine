@@ -30,6 +30,7 @@ export namespace Umi
 		void DrawCamera(Entity entity);
 		void DrawScript(Entity entity);
 		void DrawColliderBox(Entity entity);
+		void DrawText(Entity entity);
 
 		void DrawAddComponentButton(Entity entity);
 		void DrawAddScriptButton(Entity entity);

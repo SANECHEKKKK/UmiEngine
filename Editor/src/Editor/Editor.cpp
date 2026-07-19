@@ -60,6 +60,8 @@ void Editor::Run()
 	{
 		inputManager.keyboard.Update();
 
+		registry.ProcessEntities();
+
 		// ── 1. Drain the ENTIRE OS message queue before touching the game ──
 		//    Draining one-per-frame can stall the loop under heavy WM traffic.
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -146,7 +148,6 @@ void Editor::ProcessPlayRequests()
 
 	ec.requestPlay = ec.requestStop = ec.requestPauseToggle = false;
 }
-
 
 void Editor::FrameTick(float deltaTime, float& accumulator)
 {

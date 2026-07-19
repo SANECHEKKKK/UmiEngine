@@ -12,6 +12,7 @@ import Model;
 import ID;
 import Camera;
 import ColliderBox;
+import Text;
 
 import Script;
 
@@ -32,7 +33,8 @@ namespace
         Model = 1 << 3,
         Camera = 1 << 4,
 		ColliderBox = 1 << 5,
-		Script = 1 << 6
+		Script = 1 << 6,
+        Text = 1 << 7
     };
 
 	void WriteInt(std::ofstream& file, const int& v)
@@ -88,15 +90,8 @@ namespace
     }
 }
 
-bool LevelManager::SaveLevel()
+void LevelManager::SaveToFile(std::ofstream& file)
 {
-    std::ofstream file(currentLevel.levelPath, std::ios::binary);
-    if (!file.is_open())
-    {
-        Error::NonFatalError("Failed to open level file for writing.");
-        return false;
-    }
-
     file.write(reinterpret_cast<const char*>(&LevelMagic), sizeof(LevelMagic));
     file.write(reinterpret_cast<const char*>(&LevelVersion), sizeof(LevelVersion));
 
@@ -121,7 +116,8 @@ bool LevelManager::SaveLevel()
         if (registry.HasComponent<Texture>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Texture);
         if (registry.HasComponent<Model>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Model);
         if (registry.HasComponent<Camera>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Camera);
-		if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ColliderBox);
+        if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ColliderBox);
+        if (registry.HasComponent<Text>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Text);
         if (registry.HasComponent<Scripts>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Script);
 
         file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
@@ -134,7 +130,7 @@ bool LevelManager::SaveLevel()
 
         if (flags & static_cast<uint8_t>(ComponentFlag::Transform))
         {
-            Transform t = registry.GetComponent<Transform>(e);
+            auto& t = registry.GetComponent<Transform>(e);
             WriteVector3(file, t.pos);
             WriteVector3(file, t.rot);
             WriteVector3(file, t.scale);
@@ -142,19 +138,19 @@ bool LevelManager::SaveLevel()
 
         if (flags & static_cast<uint8_t>(ComponentFlag::Texture))
         {
-            Texture t = registry.GetComponent<Texture>(e);
+            auto& t = registry.GetComponent<Texture>(e);
             WriteString(file, textureManager.GetTextureData(t.id).filePath);
         }
 
         if (flags & static_cast<uint8_t>(ComponentFlag::Model))
         {
-            Model t = registry.GetComponent<Model>(e);
+            auto& t = registry.GetComponent<Model>(e);
             WriteString(file, modelManager.GetModelData(t.id).filePath);
         }
 
         if (flags & static_cast<uint8_t>(ComponentFlag::Camera))
         {
-            Camera t = registry.GetComponent<Camera>(e);
+            auto& t = registry.GetComponent<Camera>(e);
             WriteFloat(file, t.fov);
             WriteFloat(file, t.nearClip);
             WriteFloat(file, t.farClip);
@@ -162,10 +158,21 @@ bool LevelManager::SaveLevel()
 
         if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
         {
-            ColliderBox t = registry.GetComponent<ColliderBox>(e);
+            auto& t = registry.GetComponent<ColliderBox>(e);
             WriteVector3(file, t.localPosition);
             WriteVector3(file, t.localRotation);
             WriteVector3(file, t.localScale);
+        }
+
+        if (flags & static_cast<uint8_t>(ComponentFlag::Text))
+        {
+            auto& t = registry.GetComponent<Text>(e);
+            WriteString(file, t.text);
+
+            WriteFloat(file, t.color.x);
+            WriteFloat(file, t.color.y);
+            WriteFloat(file, t.color.z);
+            WriteFloat(file, t.color.w);
         }
 
         if (flags & static_cast<uint8_t>(ComponentFlag::Script))
@@ -177,6 +184,18 @@ bool LevelManager::SaveLevel()
             }
         }
     }
+}
+
+bool LevelManager::SaveLevel()
+{
+    std::ofstream file(currentLevel.levelPath, std::ios::binary);
+    if (!file.is_open())
+    {
+        Error::NonFatalError("Failed to open level file for writing.");
+        return false;
+    }
+
+    SaveToFile(file);
 
     return true;
 }
@@ -190,81 +209,7 @@ bool LevelManager::SaveLevel(const std::string& path)
         return false;
     }
 
-    file.write(reinterpret_cast<const char*>(&LevelMagic), sizeof(LevelMagic));
-    file.write(reinterpret_cast<const char*>(&LevelVersion), sizeof(LevelVersion));
-
-    // Collect valid entities first
-    std::vector<Entity> entities;
-    for (Entity e = static_cast<Entity>(0); e < registry.maxEntity; e++)
-    {
-        if (registry.HasComponent<ID>(e) || registry.HasComponent<Transform>(e) ||
-            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e) || registry.HasComponent<Camera>(e) || registry.HasComponent<ColliderBox>(e) || registry.HasComponent<Scripts>(e))
-        {
-            entities.push_back(e);
-        }
-    }
-
-    uint32_t entityCount = static_cast<uint32_t>(entities.size());
-    file.write(reinterpret_cast<const char*>(&entityCount), sizeof(entityCount));
-
-    for (Entity e : entities)
-    {
-        uint8_t flags = 0;
-        if (registry.HasComponent<ID>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ID);
-        if (registry.HasComponent<Transform>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Transform);
-        if (registry.HasComponent<Texture>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Texture);
-        if (registry.HasComponent<Model>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Model);
-		if (registry.HasComponent<Camera>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Camera);
-		if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ColliderBox);
-		if (registry.HasComponent<Scripts>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Script);
-
-        file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
-
-        if (flags & static_cast<uint8_t>(ComponentFlag::ID))
-        {
-            WriteString(file, registry.GetComponent<ID>(e).name);
-			WriteString(file, registry.GetComponent<ID>(e).tag);
-        }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Transform))
-        {
-            Transform t = registry.GetComponent<Transform>(e);
-            WriteVector3(file, t.pos);
-            WriteVector3(file, t.rot);
-            WriteVector3(file, t.scale);
-        }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Texture))
-        {
-            Texture t = registry.GetComponent<Texture>(e);
-            WriteString(file, textureManager.GetTextureData(t.id).filePath);
-        }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Model))
-        {
-            Model t = registry.GetComponent<Model>(e);
-            WriteString(file, modelManager.GetModelData(t.id).filePath);
-        }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Camera))
-        {
-            Camera t = registry.GetComponent<Camera>(e);
-            WriteFloat(file, t.fov);
-            WriteFloat(file, t.nearClip);
-            WriteFloat(file, t.farClip);
-        }
-        if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
-        {
-            ColliderBox t = registry.GetComponent<ColliderBox>(e);
-            WriteVector3(file, t.localPosition);
-            WriteVector3(file, t.localRotation);
-            WriteVector3(file, t.localScale);
-        }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Script))
-        {
-            WriteInt(file, registry.GetComponent<Scripts>(e).scripts.size());
-            for (const auto& t : registry.GetComponent<Scripts>(e).scripts)
-            {
-                WriteString(file, t.name);
-            }
-        }   
-    }
+    SaveToFile(file);
 
     return true;
 }
@@ -352,6 +297,17 @@ bool LevelManager::LoadLevel(const std::string& path)
 			collider.localRotation = ReadVector3(file);
 			collider.localScale = ReadVector3(file);
 			registry.AddComponent<ColliderBox>(e, collider);
+		}
+		if (flags & static_cast<uint8_t>(ComponentFlag::Text))
+		{
+			Text text;
+			text.text = ReadString(file);
+
+			text.color.x = ReadFloat(file);
+			text.color.y = ReadFloat(file);
+			text.color.z = ReadFloat(file);
+			text.color.w = ReadFloat(file);
+			registry.AddComponent<Text>(e, text);
 		}
 		if (flags & static_cast<uint8_t>(ComponentFlag::Script))
 		{

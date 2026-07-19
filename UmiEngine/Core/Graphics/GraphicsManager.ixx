@@ -8,6 +8,11 @@ module;
 
 #include <wrl/client.h>
 
+//---------TEXT---------
+#include <SpriteFont.h>
+#include <ResourceUploadBatch.h>
+//----------------------
+
 #include <EngineApi/EngineApi.h>
 export module GraphicsManager;
 
@@ -226,6 +231,16 @@ export namespace Umi
 		//-----------------------------------------
 #pragma endregion 3D
 
+#pragma region Text
+
+		DirectX::GraphicsMemory* gMemory{ nullptr };
+		DirectX::SpriteFont* spriteFont{ nullptr };
+		DirectX::SpriteBatch* spriteBatch{ nullptr };
+		ComPtr<ID3D12DescriptorHeap> heapForSpriteFont;
+
+		D3D12_VIEWPORT GetViewPort() const;
+#pragma endregion Text
+
 #pragma region Debug
 		ComPtr<ID3DBlob>            vertexShaderBlobDebug = nullptr;
 		ComPtr<ID3DBlob>            pixelShaderBlobDebug = nullptr;
@@ -306,6 +321,7 @@ export namespace Umi
 
 		void Render2D();
 		void Render3D();
+		void RenderText();
 
 		void FlushGPU();
 

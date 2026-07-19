@@ -17,6 +17,7 @@ import Texture;
 import Camera;
 import Script;
 import ColliderBox;
+import Text;
 
 using namespace Umi;
 
@@ -265,6 +266,23 @@ void InspectorWindow::DrawColliderBox(Entity entity)
     //-----------------------------------------------------------
 }
 
+void InspectorWindow::DrawText(Entity entity)
+{
+    //----------------------------TEXT---------------------------
+    if (engineContext.registry.HasComponent<Text>(entity))
+    {
+        auto& text = engineContext.registry.GetComponent<Text>(entity);
+
+        if (ImGui::CollapsingHeader(("Text##" + std::to_string(static_cast<int>(entity))).c_str(),
+            ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::InputText("Text", &text.text);
+            ImGui::ColorEdit4("Color", &text.color.x, ImGuiColorEditFlags_PickerHueWheel);
+        }
+    }
+    //-----------------------------------------------------------
+}
+
 void InspectorWindow::DrawAddComponentButton(Entity entity)
 {
     //-----------------------ADD COMPONENT-----------------------
@@ -289,6 +307,9 @@ void InspectorWindow::DrawAddComponentButton(Entity entity)
         
         if (!engineContext.registry.HasComponent<ColliderBox>(entity) && ImGui::MenuItem("Collider Box"))
             engineContext.registry.AddComponent<ColliderBox>(entity, ColliderBox{});
+        
+        if (!engineContext.registry.HasComponent<Text>(entity) && ImGui::MenuItem("Text"))
+            engineContext.registry.AddComponent<Text>(entity, Text{});
 
         ImGui::EndPopup();
     }
@@ -326,6 +347,7 @@ void InspectorWindow::Draw()
 
 	DrawID(entity);
 	DrawTransform(entity);
+    DrawText(entity);
 	DrawModel(entity);
 	DrawCamera(entity);
 	DrawScript(entity);

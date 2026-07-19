@@ -5,7 +5,6 @@ module;
 
 #include <EngineApi/EngineApi.h>
 export module Math;
-//export module Vector;
 
 export namespace Umi
 {
@@ -15,12 +14,18 @@ export namespace Umi
 	struct ENGINE_API float3
 	{
 		float x, y, z;
+
 		float3() : x(0), y(0), z(0) {}
+
 		float3(float x, float y, float z) : x(x), y(y), z(z) {}
-		//Struct operators//
+
 		operator struct DirectX::XMFLOAT3() const
 		{
 			return DirectX::XMFLOAT3(x, y, z);
+		}
+		operator struct DirectX::XMVECTORF32() const
+		{
+			return { x, y, z };
 		}
 	};
 
@@ -28,12 +33,18 @@ export namespace Umi
 	struct ENGINE_API float4
 	{
 		float x, y, z, w;
-		float4() : x(0), y(0), z(0), w(0) {}
-		float4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
-		//Struct operators//
-		operator struct DirectX::XMFLOAT4() const
+
+		float4() : x(0), y(0), z(0), w(1) {}
+
+		float4(float x, float y, float z, float w = 1.0f) : x(x), y(y), z(z), w(w) {}
+
+		operator DirectX::XMFLOAT4() const
 		{
-			return DirectX::XMFLOAT4(x, y, z, w);
+			return { x, y, z, w };
+		}
+		operator DirectX::XMVECTOR() const
+		{
+			return DirectX::XMVectorSet(x, y, z, w);
 		}
 	};
 
@@ -318,7 +329,7 @@ export namespace Umi
 				z /= length;
 			}
 		}
-		
+
 		Vector3 normalized() const noexcept
 		{
 			float length = std::sqrt(x * x + y * y + z * z);
@@ -327,7 +338,7 @@ export namespace Umi
 			}
 			return Vector3(0.0f, 0.0f, 0.0f);
 		}
-		
+
 		float length() const noexcept
 		{
 			return std::sqrt(x * x + y * y + z * z);

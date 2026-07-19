@@ -26,6 +26,8 @@ export namespace Umi
         ModelManager& modelManager;
         ScriptManager& scriptManager;
 
+        void SaveToFile(std::ofstream& file);
+
     public:
         CurrentLevel currentLevel;
         

@@ -101,6 +101,7 @@ export namespace Umi
 				if (registry->GetComponent<ID>(e).tag == tag)
 					return e;
 			}
+			return INVALID_ENTITY;
 		}
 		//--------------------------------------
 

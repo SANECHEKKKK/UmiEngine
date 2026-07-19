@@ -75,7 +75,7 @@ export namespace Umi
 			//-------------ATTACK-------------
 			if (Keyboard::IsKeyTrigger(KK_SPACE))
 			{
-				for (const auto e : CheckOverlap(transform.pos + transform.rot * 1.5f, {1.0f, 1.0f, 1.0f}))
+				for (const auto e : CheckOverlap(transform.pos + -transform.Forward() * 1.5f, {1.0f, 1.0f, 1.0f}))
 				{
 					if (HasTag(e, "Enemy"))
 					{

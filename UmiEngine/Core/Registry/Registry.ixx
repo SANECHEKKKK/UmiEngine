@@ -88,10 +88,18 @@ namespace Umi
 
 		void DestroyEntity(Entity e)
 		{
-			for (auto& pool : pools)
-				pool->Destroy(e);
+			entiesToDestroy.push_back(e);
+		}
 
-			freeEntities.push_back(e);
+		void ProcessEntities()
+		{
+			for (auto e : entiesToDestroy)
+			{
+				for (auto& pool : pools)
+					pool->Destroy(e);
+
+				freeEntities.push_back(e);
+			}
 		}
 
 		void Clear()

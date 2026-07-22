@@ -21,6 +21,8 @@ import InputManager;
 import ScriptManager;
 import LevelManager;
 import CollisionManager;
+import EventManager;
+import AnimationManager;
 
 import InputSystem;
 
@@ -46,8 +48,10 @@ export namespace Umi
 		Umi::ModelManager modelManager;
 		Umi::ImGuiManager imGuiManager;
 		Umi::InputManager inputManager;
-		Umi::ScriptManager scriptManager{ registry, collisionManager };
+		Umi::ScriptManager scriptManager{ registry, collisionManager, eventManager };
 		Umi::LevelManager levelManager{ registry, textureManager, modelManager, scriptManager };
+		Umi::EventManager eventManager;
+		Umi::AnimationManager animationManager{ registry, modelManager };
 
 		Umi::InputSystem inputSystem;
 

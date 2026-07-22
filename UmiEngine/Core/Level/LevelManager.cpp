@@ -13,6 +13,7 @@ import ID;
 import Camera;
 import ColliderBox;
 import Text;
+import Animator;
 
 import Script;
 
@@ -23,18 +24,19 @@ using namespace Umi;
 namespace
 {
     constexpr uint32_t LevelMagic = 0x4C564D55;
-    constexpr uint32_t LevelVersion = 1;
+    constexpr uint32_t LevelVersion = 2;
 
-    enum class ComponentFlag : uint8_t
+    enum class ComponentFlag : uint16_t
     {
-        ID = 1 << 0,
-        Transform = 1 << 1,
-        Texture = 1 << 2,
+        ID = 1 << 0, 
+        Transform = 1 << 1, 
+        Texture = 1 << 2, 
         Model = 1 << 3,
-        Camera = 1 << 4,
-		ColliderBox = 1 << 5,
-		Script = 1 << 6,
-        Text = 1 << 7
+        Camera = 1 << 4, 
+        ColliderBox = 1 << 5, 
+        Script = 1 << 6, 
+        Text = 1 << 7,
+        Animator = 1 << 8
     };
 
 	void WriteInt(std::ofstream& file, const int& v)
@@ -99,7 +101,9 @@ void LevelManager::SaveToFile(std::ofstream& file)
     for (Entity e = static_cast<Entity>(0); e < registry.maxEntity; e++)
     {
         if (registry.HasComponent<ID>(e) || registry.HasComponent<Transform>(e) ||
-            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e) || registry.HasComponent<Camera>(e) || registry.HasComponent<ColliderBox>(e) || registry.HasComponent<Scripts>(e))
+            registry.HasComponent<Texture>(e) || registry.HasComponent<Model>(e) || 
+            registry.HasComponent<Camera>(e) || registry.HasComponent<ColliderBox>(e) 
+            || registry.HasComponent<Scripts>(e) || registry.HasComponent<Animator>(e))
         {
             entities.push_back(e);
         }
@@ -110,25 +114,26 @@ void LevelManager::SaveToFile(std::ofstream& file)
 
     for (Entity e : entities)
     {
-        uint8_t flags = 0;
-        if (registry.HasComponent<ID>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ID);
-        if (registry.HasComponent<Transform>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Transform);
-        if (registry.HasComponent<Texture>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Texture);
-        if (registry.HasComponent<Model>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Model);
-        if (registry.HasComponent<Camera>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Camera);
-        if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint8_t>(ComponentFlag::ColliderBox);
-        if (registry.HasComponent<Text>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Text);
-        if (registry.HasComponent<Scripts>(e)) flags |= static_cast<uint8_t>(ComponentFlag::Script);
+        uint16_t flags = 0;
+        if (registry.HasComponent<ID>(e)) flags |= static_cast<uint16_t>(ComponentFlag::ID);
+        if (registry.HasComponent<Transform>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Transform);
+        if (registry.HasComponent<Texture>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Texture);
+        if (registry.HasComponent<Model>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Model);
+        if (registry.HasComponent<Camera>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Camera);
+        if (registry.HasComponent<ColliderBox>(e)) flags |= static_cast<uint16_t>(ComponentFlag::ColliderBox);
+        if (registry.HasComponent<Text>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Text);
+        if (registry.HasComponent<Scripts>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Script);
+        if (registry.HasComponent<Animator>(e)) flags |= static_cast<uint16_t>(ComponentFlag::Animator);
 
         file.write(reinterpret_cast<const char*>(&flags), sizeof(flags));
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::ID))
+        if (flags & static_cast<uint16_t>(ComponentFlag::ID))
         {
             WriteString(file, registry.GetComponent<ID>(e).name);
             WriteString(file, registry.GetComponent<ID>(e).tag);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Transform))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Transform))
         {
             auto& t = registry.GetComponent<Transform>(e);
             WriteVector3(file, t.pos);
@@ -136,19 +141,19 @@ void LevelManager::SaveToFile(std::ofstream& file)
             WriteVector3(file, t.scale);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Texture))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Texture))
         {
             auto& t = registry.GetComponent<Texture>(e);
             WriteString(file, textureManager.GetTextureData(t.id).filePath);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Model))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Model))
         {
             auto& t = registry.GetComponent<Model>(e);
             WriteString(file, modelManager.GetModelData(t.id).filePath);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Camera))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Camera))
         {
             auto& t = registry.GetComponent<Camera>(e);
             WriteFloat(file, t.fov);
@@ -156,7 +161,7 @@ void LevelManager::SaveToFile(std::ofstream& file)
             WriteFloat(file, t.farClip);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
+        if (flags & static_cast<uint16_t>(ComponentFlag::ColliderBox))
         {
             auto& t = registry.GetComponent<ColliderBox>(e);
             WriteVector3(file, t.localPosition);
@@ -164,7 +169,7 @@ void LevelManager::SaveToFile(std::ofstream& file)
             WriteVector3(file, t.localScale);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Text))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Text))
         {
             auto& t = registry.GetComponent<Text>(e);
             WriteString(file, t.text);
@@ -175,13 +180,28 @@ void LevelManager::SaveToFile(std::ofstream& file)
             WriteFloat(file, t.color.w);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Script))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Script))
         {
             WriteInt(file, registry.GetComponent<Scripts>(e).scripts.size());
             for (const auto& t : registry.GetComponent<Scripts>(e).scripts)
             {
                 WriteString(file, t.name);
             }
+        }
+
+        if (flags & static_cast<uint16_t>(ComponentFlag::Animator))
+        {
+            auto& a = registry.GetComponent<Animator>(e);
+            WriteInt(file, static_cast<int>(a.slots.size()));
+            for (const auto& s : a.slots)
+            {
+                WriteString(file, s.key);
+                WriteString(file, s.clipName);
+                WriteFloat(file, s.speed);
+                uint8_t loop = s.loop ? 1 : 0;
+                file.write(reinterpret_cast<const char*>(&loop), sizeof(loop));
+            }
+            WriteFloat(file, a.blendDuration);
         }
     }
 }
@@ -249,19 +269,19 @@ bool LevelManager::LoadLevel(const std::string& path)
 
     for (uint32_t i = 0; i < entityCount; i++)
     {
-        uint8_t flags = 0;
+        uint16_t flags = 0;
         file.read(reinterpret_cast<char*>(&flags), sizeof(flags));
 
         Entity e = registry.CreateEntity();
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::ID))
+        if (flags & static_cast<uint16_t>(ComponentFlag::ID))
         {
             ID id;
             id.name = ReadString(file);
 			id.tag = ReadString(file);
             registry.AddComponent<ID>(e, id);
         }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Transform))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Transform))
         {
             Transform transform;
             transform.pos = ReadVector3(file);
@@ -269,20 +289,20 @@ bool LevelManager::LoadLevel(const std::string& path)
             transform.scale = ReadVector3(file);
             registry.AddComponent<Transform>(e, transform);
         }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Texture))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Texture))
         {
             Texture texture;
             texture.id = textureManager.LoadTexture2D(ReadString(file));
             registry.AddComponent<Texture>(e, texture);
         }
-        if (flags & static_cast<uint8_t>(ComponentFlag::Model))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Model))
         {
             Model model;
             model.id = modelManager.LoadModel(ReadString(file));
             registry.AddComponent<Model>(e, model);
         }
 
-        if (flags & static_cast<uint8_t>(ComponentFlag::Camera))
+        if (flags & static_cast<uint16_t>(ComponentFlag::Camera))
         {
             Camera camera;
             camera.fov = ReadFloat(file);
@@ -290,7 +310,7 @@ bool LevelManager::LoadLevel(const std::string& path)
             camera.farClip = ReadFloat(file);
             registry.AddComponent<Camera>(e, camera);
         }
-		if (flags & static_cast<uint8_t>(ComponentFlag::ColliderBox))
+		if (flags & static_cast<uint16_t>(ComponentFlag::ColliderBox))
 		{
 			ColliderBox collider;
 			collider.localPosition = ReadVector3(file);
@@ -298,7 +318,7 @@ bool LevelManager::LoadLevel(const std::string& path)
 			collider.localScale = ReadVector3(file);
 			registry.AddComponent<ColliderBox>(e, collider);
 		}
-		if (flags & static_cast<uint8_t>(ComponentFlag::Text))
+		if (flags & static_cast<uint16_t>(ComponentFlag::Text))
 		{
 			Text text;
 			text.text = ReadString(file);
@@ -309,7 +329,7 @@ bool LevelManager::LoadLevel(const std::string& path)
 			text.color.w = ReadFloat(file);
 			registry.AddComponent<Text>(e, text);
 		}
-		if (flags & static_cast<uint8_t>(ComponentFlag::Script))
+		if (flags & static_cast<uint16_t>(ComponentFlag::Script))
 		{
 			int scriptCount = ReadInt(file);
 			for (int j = 0; j < scriptCount; j++)
@@ -318,6 +338,28 @@ bool LevelManager::LoadLevel(const std::string& path)
                 scriptManager.AddScriptToEntity(e, scriptName);
 			}
 		}
+        if (flags & static_cast<uint16_t>(ComponentFlag::Animator))
+        {
+            Animator animator;
+            int slotCount = ReadInt(file);
+            animator.slots.reserve(slotCount);
+            for (int j = 0; j < slotCount; ++j)
+            {
+                AnimationSlot s;
+                s.key = ReadString(file);
+                s.clipName = ReadString(file);
+                s.speed = ReadFloat(file);
+                uint8_t loop = 0;
+                file.read(reinterpret_cast<char*>(&loop), sizeof(loop));
+                s.loop = loop != 0;
+
+                s.keyHash = AnimHash(s.key);
+                s.clipIndex = -1;
+                animator.slots.push_back(std::move(s));
+            }
+            animator.blendDuration = ReadFloat(file);
+            registry.AddComponent<Animator>(e, animator);
+        }
     }
 
     return true;

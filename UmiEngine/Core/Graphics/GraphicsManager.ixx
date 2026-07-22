@@ -19,6 +19,7 @@ export module GraphicsManager;
 import EngineContext;
 import GraphicsContext;
 import Vertex;
+import Animation;
 import Registry;
 import TextureManager;
 import DescriptorHeap;
@@ -228,7 +229,16 @@ export namespace Umi
 		//--------3D_MATRIX_CONSTANT_BUFFER--------
 		ComPtr<ID3D12Resource> matrixConstantBuffer3D;
 		uint8_t* mapMatrix3D = nullptr;
+		UINT matrix3DInstance = 0;
 		//-----------------------------------------
+
+		//-------------ANIMATION_STUFF-------------
+		ComPtr<ID3D12PipelineState> pipelinestate3DSkinned = nullptr;
+		ComPtr<ID3D12Resource> boneConstantBuffer;
+		uint8_t* mapBones = nullptr;
+		UINT cbBoneCapacity = 0;
+		//-----------------------------------------
+
 #pragma endregion 3D
 
 #pragma region Text
@@ -317,6 +327,15 @@ export namespace Umi
 		void Create3DDescriptorHeap();
 		void Create3DMatrixContantBuffer();
 		void Create3DPipelineState();
+		//----------------------------------
+
+
+		//------------ANIMATION-------------
+		void Load3DAnimShaders();
+		void Create3DSkinnedPipelineState();
+		void CreateBoneConstantBuffer(UINT capacity);
+		void EnsureBoneCapacity(UINT needed);
+		void Render3DSkinned();
 		//----------------------------------
 
 		void Render2D();

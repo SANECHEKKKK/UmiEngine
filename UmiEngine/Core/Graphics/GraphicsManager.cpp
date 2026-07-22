@@ -39,6 +39,7 @@ import Transform;
 import Camera;
 import ColliderBox;
 import Text;
+import Animator;
 
 std::filesystem::path GetExecutableDir() {
 	wchar_t path[MAX_PATH];
@@ -405,13 +406,13 @@ void GraphicsManager::Create3DPipelineState()
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
 	{
-		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		"POSITION",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	},
 	{
-		"NORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		"NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT,		0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	},
 	{
-		"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		"TEXCOORD",		0, DXGI_FORMAT_R32G32_FLOAT,		0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	}
 	};
 
@@ -512,7 +513,7 @@ void GraphicsManager::Create3DPipelineState()
 	//rootparam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダから見える
 
 	//          NEW WAY
-	CD3DX12_ROOT_PARAMETER rootparam[3] = {};
+	CD3DX12_ROOT_PARAMETER rootparam[4] = {};
 	rootparam[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 	rootparam[1].InitAsConstants(12, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
@@ -520,6 +521,7 @@ void GraphicsManager::Create3DPipelineState()
 	range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0);
 	rootparam[2].InitAsDescriptorTable(1, &range, D3D12_SHADER_VISIBILITY_PIXEL);
 
+	rootparam[3].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_VERTEX);  // b2, bones
 	//-----------------------------------------------
 
 
@@ -528,7 +530,7 @@ void GraphicsManager::Create3DPipelineState()
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 	rootSignatureDesc.pParameters = rootparam;//ルートパラメータの先頭アドレス
-	rootSignatureDesc.NumParameters = 3;//ルートパラメータ数
+	rootSignatureDesc.NumParameters = 4;//ルートパラメータ数
 	rootSignatureDesc.pStaticSamplers = &samplerDesc;
 	rootSignatureDesc.NumStaticSamplers = 1;
 
@@ -559,6 +561,241 @@ void GraphicsManager::Create3DPipelineState()
 		Error::FatalError("Failed to create 3D pipeline state.");
 	}
 
+}
+//------------------------------------------
+
+//-----------------ANIMATION----------------
+void GraphicsManager::Load3DAnimShaders()
+{
+	auto result = D3DReadFileToBlob(
+		(GetExecutableDir() / "3DSkinnedVertexShader.cso").wstring().c_str(),
+		&vertexShaderBlob3D
+	);
+
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			Error::FatalError("3D Anim vertex shader .cso not found");
+		}
+		else
+		{
+			Error::FatalError("Failed to load 3D vertex shader .cso.");
+		}
+	}
+
+	// Load precompiled pixel shader
+	result = D3DReadFileToBlob(
+		(GetExecutableDir() / "3DBasicPixelShader.cso").wstring().c_str(),
+		&pixelShaderBlob3D
+	);
+
+	if (FAILED(result))
+	{
+		if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+		{
+			Error::FatalError("3D pixel shader .cso not found");
+		}
+		else
+		{
+			Error::FatalError("Failed to load 3D pixel shader .cso.");
+		}
+	}
+}
+
+void GraphicsManager::Create3DSkinnedPipelineState()
+{
+	Load3DAnimShaders();
+	CreateBoneConstantBuffer(16);
+
+	D3D12_INPUT_ELEMENT_DESC skinnedLayout[] = {
+		{
+			"POSITION",     0, DXGI_FORMAT_R32G32B32_FLOAT,     0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"NORMAL",       0, DXGI_FORMAT_R32G32B32_FLOAT,     0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"TEXCOORD",     0, DXGI_FORMAT_R32G32_FLOAT,        0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_SINT,   0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+		{
+			"BLENDWEIGHT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT,  0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
+	};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeline = {};
+	gpipeline.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob3D.Get());
+	gpipeline.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob3D.Get());
+
+	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;//中身は0xffffffff
+
+	gpipeline.BlendState.AlphaToCoverageEnable = false;
+	gpipeline.BlendState.IndependentBlendEnable = false;
+
+	D3D12_RENDER_TARGET_BLEND_DESC renderTargetBlendDesc = {};
+
+	//ひとまず加算や乗算やαブレンディングは使用しない
+	renderTargetBlendDesc.BlendEnable = false;
+	renderTargetBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	//ひとまず論理演算は使用しない
+	renderTargetBlendDesc.LogicOpEnable = false;
+
+	gpipeline.BlendState.RenderTarget[0] = renderTargetBlendDesc;
+
+	gpipeline.RasterizerState.MultisampleEnable = false;//まだアンチェリは使わない
+	gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;//カリングしない
+	gpipeline.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;//中身を塗りつぶす
+	gpipeline.RasterizerState.DepthClipEnable = true;//深度方向のクリッピングは有効に
+
+	//残り
+	gpipeline.RasterizerState.FrontCounterClockwise = false;
+	gpipeline.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	gpipeline.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	gpipeline.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+	gpipeline.RasterizerState.AntialiasedLineEnable = false;
+	gpipeline.RasterizerState.ForcedSampleCount = 0;
+	gpipeline.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+
+	gpipeline.DepthStencilState.DepthEnable = true;
+	gpipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	gpipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	gpipeline.DepthStencilState.StencilEnable = false;
+	gpipeline.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
+
+	gpipeline.InputLayout.pInputElementDescs = skinnedLayout;//レイアウト先頭アドレス
+	gpipeline.InputLayout.NumElements = _countof(skinnedLayout);//レイアウト配列数
+
+	gpipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;//ストリップ時のカットなし
+	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;//三角形で構成
+
+	gpipeline.NumRenderTargets = 1;//今は１つのみ
+	gpipeline.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;//0～1に正規化されたRGBA
+
+
+
+	//--------------------SAMPLER--------------------
+	gpipeline.SampleDesc.Count = 1;//サンプリングは1ピクセルにつき１
+	gpipeline.SampleDesc.Quality = 0;//クオリティは最低
+
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//横繰り返し
+	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//縦繰り返し
+	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//奥行繰り返し
+	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;//ボーダーの時は黒
+	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;//補間しない(ニアレストネイバー)
+	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;//ミップマップ最大値
+	samplerDesc.MinLOD = 0.0f;//ミップマップ最小値
+	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//オーバーサンプリングの際リサンプリングしない？
+	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//ピクセルシェーダからのみ可視
+	//-----------------------------------------------
+
+	gpipeline.pRootSignature = rootsignature3D.Get();
+	auto result = device->CreateGraphicsPipelineState(&gpipeline, IID_PPV_ARGS(&pipelinestate3DSkinned));
+	if (result != S_OK)
+	{
+		Error::FatalError("Failed to create 3D Anim pipeline state.");
+	}
+
+}
+
+void GraphicsManager::CreateBoneConstantBuffer(UINT capacity)
+{
+	const UINT alignedSize = (sizeof(DirectX::XMFLOAT4X4) * MAX_BONES + 0xff) & ~0xff;
+
+	if (mapBones) { boneConstantBuffer->Unmap(0, nullptr); mapBones = nullptr; }
+
+	auto props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto desc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize * capacity);
+	device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(boneConstantBuffer.ReleaseAndGetAddressOf()));
+	boneConstantBuffer->Map(0, nullptr, (void**)&mapBones);
+	cbBoneCapacity = capacity;
+}
+
+void GraphicsManager::EnsureBoneCapacity(UINT needed)
+{
+	if (needed <= cbBoneCapacity) return;
+	UINT cap = cbBoneCapacity ? cbBoneCapacity : 1;
+	while (cap < needed) cap *= 2;
+	FlushGPU();
+	CreateBoneConstantBuffer(cap);
+}
+
+void GraphicsManager::Render3DSkinned()
+{
+	Camera* camera = cameraManager.GetMainCamera();
+	if (!camera) return;
+
+	UINT needed = 0;
+	for (auto e : engineContext.registry.View<Model, Transform, Animator>()) ++needed;
+	if (needed == 0) return;
+
+	EnsureBoneCapacity(needed);
+	EnsureMatrixCapacity3D(needed);
+
+	commandList->SetPipelineState(pipelinestate3DSkinned.Get());
+	commandList->SetGraphicsRootSignature(rootsignature3D.Get());
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	auto* heap = descriptorHeap3D.Get();
+	auto cbvHandle = descriptorHeap3D.GetGPU(0);
+	cbvHandle.ptr += device->GetDescriptorHandleIncrementSize(
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	commandList->SetDescriptorHeaps(1, &heap);
+	commandList->SetGraphicsRootDescriptorTable(2, cbvHandle);
+
+	const UINT matrixStride = (sizeof(SceneMatrix) + 0xff) & ~0xff;
+	const UINT boneStride = (sizeof(DirectX::XMFLOAT4X4) * MAX_BONES + 0xff) & ~0xff;
+	UINT instance = 0;
+
+	for (auto e : engineContext.registry.View<Model, Transform, Animator>())
+	{
+		auto& model = engineContext.registry.GetComponent<Model>(e);
+		auto& transform = engineContext.registry.GetComponent<Transform>(e);
+		auto& animator = engineContext.registry.GetComponent<Animator>(e);
+
+		if (model.id == INVALID_MODELID) continue;
+		auto& modelData = engineContext.modelManager.GetModelData(model.id);
+
+		DirectX::XMMATRIX world =
+			DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z) *
+			DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(transform.rot.x)) *
+			DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(transform.rot.y)) *
+			DirectX::XMMatrixRotationZ(DirectX::XMConvertToRadians(transform.rot.z)) *
+			DirectX::XMMatrixTranslation(transform.pos.x, transform.pos.y, transform.pos.z);
+
+		SceneMatrix matrices{ world, camera->viewMatrix3D, camera->projectionMatrix3D };
+		const UINT mOffset = instance * matrixStride;
+		memcpy(mapMatrix3D + mOffset, &matrices, sizeof(SceneMatrix));
+		commandList->SetGraphicsRootConstantBufferView(
+			0, matrixConstantBuffer3D->GetGPUVirtualAddress() + mOffset);
+
+		const UINT bOffset = instance * boneStride;
+		memcpy(mapBones + bOffset, animator.palette.data(),
+			sizeof(DirectX::XMFLOAT4X4) * MAX_BONES);
+		commandList->SetGraphicsRootConstantBufferView(
+			3, boneConstantBuffer->GetGPUVirtualAddress() + bOffset);
+
+		for (auto& mesh : modelData.meshes)
+		{
+			commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+			commandList->IASetIndexBuffer(&mesh.indexBufferView);
+			commandList->SetGraphicsRoot32BitConstants(
+				1, 12, &modelData.materials[mesh.materialIndex], 0);
+			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
+		}
+
+		++instance;
+	}
 }
 //------------------------------------------
 
@@ -1252,6 +1489,8 @@ void GraphicsManager::Render3D()
 
 	for (auto e : engineContext.registry.View<Model, Transform>())
 	{
+		if (engineContext.registry.HasComponent<Animator>(e)) continue;
+
 		auto& model = engineContext.registry.GetComponent<Model>(e);
 		auto& transform = engineContext.registry.GetComponent<Transform>(e);
 
@@ -1313,6 +1552,7 @@ void GraphicsManager::Render()
 
 	Render2D();
 	Render3D();
+	Render3DSkinned();
 
 	if (showColliders)
 		RenderDebugColliders();
@@ -1511,6 +1751,10 @@ GraphicsManager::GraphicsManager(HWND hwnd, EngineContext& engineContext)
 
 	//------------------3D------------------
 	Create3DPipelineState();
+	//--------------------------------------
+
+	//-----------------ANIM-----------------
+	Create3DSkinnedPipelineState();
 	//--------------------------------------
 
 	//----------------DEBUG-----------------

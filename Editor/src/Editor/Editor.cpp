@@ -45,6 +45,13 @@ Editor::Editor(HINSTANCE hInstance, const char* title)
 	editorContext.levelManager = &levelManager;
 
 	scriptManager.LoadGameScripts();
+
+	eventManager.SetOpenLevelHandler([this](const std::string& name) {
+		levelManager.LoadLevel(name);
+		});
+	eventManager.SetCloseGameHandler([this]() {
+		isRunning = false;
+		});
 }
 
 void Editor::Run()
@@ -61,6 +68,7 @@ void Editor::Run()
 		inputManager.keyboard.Update();
 
 		registry.ProcessEntities();
+
 
 		// ── 1. Drain the ENTIRE OS message queue before touching the game ──
 		//    Draining one-per-frame can stall the loop under heavy WM traffic.
@@ -120,6 +128,8 @@ void Editor::Run()
 			}
 		}
 
+		eventManager.ProcessEvents();
+
 	}
 }
 
@@ -162,12 +172,13 @@ void Editor::FrameTick(float deltaTime, float& accumulator)
 		{
 			Time::deltaTime = kFixedStep;
 			collisionManager.Update();
-			inputSystem.Update();
 			accumulator -= kFixedStep;
 		}
 
 		Time::deltaTime = deltaTime;
+		inputSystem.Update();
 		scriptManager.Update();
+		animationManager.Update(deltaTime);
 	}
 	const float alpha = accumulator / kFixedStep;
 

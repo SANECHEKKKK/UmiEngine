@@ -22,6 +22,7 @@ import GraphicsContext;
 import TextureManager;
 import Vertex;
 import Material;
+import Animation;
 
 export namespace Umi
 {
@@ -44,6 +45,9 @@ export namespace Umi
 		std::vector<Mesh> meshes;
 		std::vector<Material> materials;
 		std::string filePath;
+
+		Skeleton skeleton;
+		std::vector<AnimationClip> animations;
 	};
 
 	class ENGINE_API ModelManager
@@ -59,6 +63,10 @@ export namespace Umi
 		void LoadNode(const aiNode* node, const aiScene* scene, ModelData& modelData);
 		void LoadMesh(const aiMesh* mesh, const aiScene* scene, ModelData& modelData);
 		void LoadTexture(const aiScene* scene, ModelData& modelData);
+
+		void BuildNodeHierarchy(const aiNode* node, int parentIndex, ModelData& modelData);
+		void LoadBones(const aiMesh* mesh, Mesh& out, ModelData& modelData);
+		void LoadAnimations(const aiScene* scene, ModelData& modelData);
 
 		bool CreateVertexBuffer(Mesh& mesh);
 		bool CreateIndexBuffer(Mesh& mesh);

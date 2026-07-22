@@ -31,6 +31,7 @@ export namespace Umi
 		void DrawScript(Entity entity);
 		void DrawColliderBox(Entity entity);
 		void DrawText(Entity entity);
+		void DrawAnimator(Entity entity);
 
 		void DrawAddComponentButton(Entity entity);
 		void DrawAddScriptButton(Entity entity);

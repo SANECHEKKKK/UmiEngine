@@ -18,6 +18,7 @@ import Camera;
 import Script;
 import ColliderBox;
 import Text;
+import Animator;
 
 using namespace Umi;
 
@@ -283,6 +284,154 @@ void InspectorWindow::DrawText(Entity entity)
     //-----------------------------------------------------------
 }
 
+void InspectorWindow::DrawAnimator(Entity entity)
+{
+    //--------------------------ANIMATOR-------------------------
+    auto& registry = engineContext.registry;
+
+    if (!registry.HasComponent<Animator>(entity))
+        return;
+
+    ImGui::PushID("AnimatorComponent");
+
+    bool open = ImGui::CollapsingHeader("Animator",
+        ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+
+    const char* dots = "...";
+    float dotsW = ImGui::CalcTextSize(dots).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    ImGui::SameLine(ImGui::GetContentRegionMax().x - dotsW);
+    if (ImGui::SmallButton(dots))
+        ImGui::OpenPopup("component_settings");
+
+    if (ImGui::BeginPopup("component_settings"))
+    {
+        if (ImGui::MenuItem("Remove Component"))
+        {
+            deferredActions.push_back([this, entity]()
+                {
+                    engineContext.registry.RemoveComponent<Animator>(entity);
+                });
+        }
+        ImGui::EndPopup();
+    }
+
+    if (open)
+    {
+        auto& animator = registry.GetComponent<Animator>(entity);
+
+        if (!registry.HasComponent<Model>(entity) ||
+            registry.GetComponent<Model>(entity).id == INVALID_MODELID)
+        {
+            ImGui::TextDisabled("Assign a Model first.");
+            ImGui::PopID();
+            return;
+        }
+
+        auto& modelData = engineContext.modelManager.GetModelData(
+            registry.GetComponent<Model>(entity).id);
+
+        if (modelData.animations.empty())
+            ImGui::TextDisabled("Model contains no animation clips.");
+
+        ImGui::DragFloat("Default Blend", &animator.blendDuration, 0.01f, 0.0f, 2.0f);
+        ImGui::Separator();
+
+        int slotToRemove = -1;
+
+        for (int i = 0; i < static_cast<int>(animator.slots.size()); ++i)
+        {
+            auto& slot = animator.slots[i];
+            ImGui::PushID(i);
+
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.35f);
+            if (ImGui::InputText("##key", &slot.key))
+                slot.keyHash = AnimHash(slot.key);
+
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
+
+            const char* preview = slot.clipName.empty()
+                ? "<no clip>"
+                : slot.clipName.c_str();
+
+            if (ImGui::BeginCombo("##clip", preview))
+            {
+                for (const auto& clip : modelData.animations)
+                {
+                    bool selected = (clip.name == slot.clipName);
+                    if (ImGui::Selectable(clip.name.c_str(), selected))
+                    {
+                        slot.clipName = clip.name;
+                        slot.clipIndex = -1;
+                    }
+                    if (selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::SameLine();
+            if (ImGui::SmallButton("x"))
+                slotToRemove = i;
+
+            ImGui::Indent();
+            ImGui::Checkbox("Loop", &slot.loop);
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::DragFloat("Speed", &slot.speed, 0.01f, 0.0f, 5.0f);
+
+            if (slot.clipIndex < 0 && !slot.clipName.empty())
+                ImGui::TextDisabled("unresolved");
+            ImGui::Unindent();
+
+            ImGui::PopID();
+        }
+
+        if (slotToRemove >= 0)
+        {
+            deferredActions.push_back([this, entity, slotToRemove]()
+                {
+                    auto& a = engineContext.registry.GetComponent<Animator>(entity);
+                    if (slotToRemove < static_cast<int>(a.slots.size()))
+                        a.slots.erase(a.slots.begin() + slotToRemove);
+                });
+        }
+
+        if (ImGui::Button("Add Slot", ImVec2(ImGui::GetContentRegionAvail().x, 0.0f)))
+        {
+            AnimationSlot slot;
+            slot.key = "New";
+            slot.keyHash = AnimHash(slot.key);
+            animator.slots.push_back(std::move(slot));
+        }
+
+        if (editorContext.playState != PlayState::Edit)
+        {
+            ImGui::Separator();
+            if (animator.currentClip >= 0)
+            {
+                ImGui::Text("Playing: %s",
+                    modelData.animations[animator.currentClip].name.c_str());
+                if (animator.blending && animator.nextClip >= 0)
+                {
+                    ImGui::Text("Blending -> %s (%.0f%%)",
+                        modelData.animations[animator.nextClip].name.c_str(),
+                        animator.blendDuration > 0.0f
+                        ? (animator.blendTime / animator.blendDuration) * 100.0f
+                        : 100.0f);
+                }
+            }
+            else
+            {
+                ImGui::TextDisabled("Not playing.");
+            }
+        }
+    }
+
+    ImGui::PopID();
+    //-----------------------------------------------------------
+}
+
 void InspectorWindow::DrawAddComponentButton(Entity entity)
 {
     //-----------------------ADD COMPONENT-----------------------
@@ -310,6 +459,9 @@ void InspectorWindow::DrawAddComponentButton(Entity entity)
         
         if (!engineContext.registry.HasComponent<Text>(entity) && ImGui::MenuItem("Text"))
             engineContext.registry.AddComponent<Text>(entity, Text{});
+
+        if (!engineContext.registry.HasComponent<Animator>(entity) && ImGui::MenuItem("Animator"))
+            engineContext.registry.AddComponent<Animator>(entity, Animator{});
 
         ImGui::EndPopup();
     }
@@ -352,6 +504,7 @@ void InspectorWindow::Draw()
 	DrawCamera(entity);
 	DrawScript(entity);
 	DrawColliderBox(entity);
+    DrawAnimator(entity);
     
 	DrawAddComponentButton(entity);
     DrawAddScriptButton(entity);

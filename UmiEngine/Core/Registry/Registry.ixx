@@ -107,6 +107,7 @@ namespace Umi
 			pools.clear();
 			poolMap.clear();
 			freeEntities.clear();
+			entiesToDestroy.clear();
 			maxEntity = static_cast<Entity>(0);
 		}
 

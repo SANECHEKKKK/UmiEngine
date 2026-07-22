@@ -153,6 +153,24 @@
     <ClCompile Include="Core\Text\Text.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Events\EventManager.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Events\EventManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Animation\Animation.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Animation\AnimationManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Animation\AnimationManager.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Animation\Animator.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Json\json.hpp">
@@ -181,6 +199,7 @@
     <FxCompile Include="Core\Shaders\peraPixel.hlsl" />
     <FxCompile Include="Core\Shaders\DebugVertexShader.hlsl" />
     <FxCompile Include="Core\Shaders\DebugPixelShader.hlsl" />
+    <FxCompile Include="Core\Shaders\3DSkinnedVertexShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Shaders\peraHeader.hlsli" />

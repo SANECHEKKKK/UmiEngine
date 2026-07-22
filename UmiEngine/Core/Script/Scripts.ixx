@@ -10,26 +10,31 @@ import Registry;
 import Transform;
 import CollisionManager;
 import ID;
+import EventManager;
 
 export namespace Umi
 {
 	class ENGINE_API BasicScript
 	{
-	protected:
 		//-----------------BASE-----------------
+	private:
+		CollisionManager* collisionManager;
+		EventManager* eventManager;
+
+	protected:
+		Registry* registry;
+
 		friend class ScriptManager;
 
-		Registry* registry;
-		CollisionManager* collisionManager;
-
-		void Bind(Entity e, Registry* reg, CollisionManager* colManager)
+		void Bind(Entity e, Registry* reg, CollisionManager* colManager, EventManager* evManager)
 		{
 			entity = e;
 			registry = reg;
 			collisionManager = colManager;
+			eventManager = evManager;
 		}
 		//--------------------------------------
-		
+
 		//------------COMPONENT FUNC------------
 		template<typename T>
 		bool HasComponent(Entity e)
@@ -115,6 +120,20 @@ export namespace Umi
 		//-------------SCRIPTS FUNC-------------
 		template<typename T>
 		T* GetScript(Entity e);
+		//--------------------------------------
+
+		//--------------LEVEL FUNC--------------
+		void OpenLevel(std::string LevelName)
+		{
+			eventManager->PushOpenLevelEvent(LevelName);
+		}
+		//--------------------------------------
+
+		//---------------GAME FUNC--------------
+		void CloseGame()
+		{
+			eventManager->PushCloseGameEvent();
+		}
 		//--------------------------------------
 
 	public:
